@@ -35,6 +35,7 @@ src/
   anim/
     mod.rs             -- Animation trait, resolve() dispatch, DEFAULT const
     green_flash.rs     -- "green-flash" animation (default)
+    flames.rs          -- "flames" animation
 ```
 
 ### CLI flags
@@ -73,6 +74,15 @@ pub trait Animation {
 
 No changes to `main.rs` or other animation files.
 
+### Animations
+
+Available animations (pass to `-a`):
+
+| Name | Description |
+|---|---|
+| `green-flash` | Green cooling gradient sweep (default) |
+| `flames` | Orange-to-red fire sweep with flickering dot-matrix characters |
+
 ### Green-flash animation (`anim/green_flash.rs`)
 
 Characters sweep in from the left, one per frame, starting at frame 2. A single **spinner character** (`-\|/` cycling) advances rightward one position per frame, acting as the leading edge.
@@ -90,6 +100,19 @@ Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `GRA
 | `FRAME_DELAY_MS` | Speed of animation |
 | `COOLDOWN_FRAMES` | Length of the green wake behind the spinner |
 | `GRADIENT` | 256-color indices from hot to rest |
+
+### Flames animation (`anim/flames.rs`)
+
+Characters sweep in from the left, one per frame, starting at frame 2. The leading edge and cooling characters are rendered as Braille/block dot-matrix chars (`FLAME_CHARS`) chosen deterministically by position and frame via a splitmix64-style hash, giving a flickering fire texture.
+
+Characters cool down over `COOLDOWN_FRAMES` frames through an orange-yellow → red gradient using ANSI 256-color mode. Once fully cooled, each character snaps to its actual prompt color.
+
+| Constant | Purpose |
+|---|---|
+| `FRAME_DELAY_MS` | Speed of animation |
+| `COOLDOWN_FRAMES` | Length of the fire wake behind the leading edge |
+| `GRADIENT` | 256-color indices from hot (`#ffff00`) to dark red (`#870000`) |
+| `FLAME_CHARS` | Braille/block chars used during the fire phase |
 
 ### Fish shell integration
 
