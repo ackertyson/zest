@@ -13,7 +13,7 @@ cargo test              # run tests
 printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run
 
 # Select animation explicitly
-printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- -a green-flash
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- green-flash
 
 # Plain text fallback (no pipe)
 cargo run -- "hello world"
@@ -32,17 +32,19 @@ Rust CLI that reads a colorized prompt from **stdin** (or falls back to CLI args
 src/
   main.rs              -- CLI parsing, input reading, animation loop
   style.rs             -- StyledChar, parse_styled(), color256() (shared infra)
+  shell.rs             -- wrap_ansi_for_zsh(), is_zsh() (shell-specific logic)
   anim/
-    mod.rs             -- Animation trait, resolve() dispatch, DEFAULT const
+    mod.rs             -- Animation trait, resolve() dispatch, cooldown_color(), DEFAULT const
     green_flash.rs     -- "green-flash" animation (default)
     flames.rs          -- "flames" animation
 ```
 
-### CLI flags
+### CLI
 
-- `-a <name>` / `--animation <name>` — select animation (default: `green-flash`)
+- `zest [ANIMATION]` — optional positional arg selects animation (default: `green-flash`)
+- `--zsh` — wrap ANSI codes for zsh prompt width
 - `-h` / `--help` — print usage
-- Unknown animation names warn to stderr and fall back to default
+- Unknown first args are treated as fallback text, not animation names
 
 ### Input handling
 
@@ -58,13 +60,13 @@ The `parse_styled()` function walks the input char-by-char, extracting `StyledCh
 
 ```rust
 pub trait Animation {
-    fn total_frames(&self, n: usize) -> usize;
+    fn total_frames(&self, styled: &[StyledChar]) -> usize;
     fn frame_delay_ms(&self) -> u64;
-    fn render_frame(&self, styled: &[StyledChar], n: usize, frame: usize, buf: &mut String);
+    fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String);
 }
 ```
 
-`main` owns the frame loop and calls into the trait. The loop clears `buf` before each `render_frame` call; animations only append.
+`main` owns the frame loop and calls into the trait. The loop clears `buf` before each `render_frame` call; animations only append. A shared `cooldown_color(age, cooldown_frames, gradient)` helper in `anim/mod.rs` maps cooldown age to a 256-color index.
 
 ### Adding a new animation
 
@@ -76,7 +78,7 @@ No changes to `main.rs` or other animation files.
 
 ### Animations
 
-Available animations (pass to `-a`):
+Available animations (pass as first positional arg):
 
 | Name | Description |
 |---|---|

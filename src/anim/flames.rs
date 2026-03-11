@@ -30,34 +30,35 @@ fn flame_char(pos: usize, frame: usize) -> char {
     FLAME_CHARS[h % FLAME_CHARS.len()]
 }
 
-fn cooldown_color(age: usize) -> u8 {
-    let steps = GRADIENT.len() - 1;
-    let idx = ((age * steps) / COOLDOWN_FRAMES).min(steps);
-    GRADIENT[idx]
-}
-
 impl Animation for Flames {
-    fn total_frames(&self, n: usize) -> usize {
-        n + COOLDOWN_FRAMES
+    fn total_frames(&self, styled: &[StyledChar]) -> usize {
+        styled.len() + COOLDOWN_FRAMES
     }
 
     fn frame_delay_ms(&self) -> u64 {
         FRAME_DELAY_MS
     }
 
-    fn render_frame(&self, styled: &[StyledChar], n: usize, frame: usize, buf: &mut String) {
+    fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
+        let n = styled.len();
         let revealed = if frame >= 2 { (frame - 2).min(n) } else { 0 };
-        let has_leading = frame >= 2 && revealed < n;
+        let last_content = styled
+            .iter()
+            .rposition(|sc| !sc.ch.is_whitespace())
+            .unwrap_or(n);
+        let has_leading = frame >= 2 && revealed < n && revealed < last_content;
 
         // Revealed chars: show flickering dot-matrix during cooldown, then snap to real color.
+        // Characters at or past last_content (chevron, trailing whitespace) skip the flame
+        // effect entirely and are always shown in their real color.
         for (i, sc) in styled[..revealed].iter().enumerate() {
             let age = frame.saturating_sub(i + 3);
-            if age >= COOLDOWN_FRAMES {
+            if age >= COOLDOWN_FRAMES || i >= last_content {
                 buf.push_str("\x1b[0m");
                 buf.push_str(&sc.color_prefix);
                 buf.push(sc.ch);
             } else {
-                color256(buf, cooldown_color(age));
+                color256(buf, super::cooldown_color(age, COOLDOWN_FRAMES, GRADIENT));
                 buf.push(flame_char(i, frame));
             }
         }
@@ -82,7 +83,7 @@ mod tests {
     fn no_output_before_animation_starts() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Flames.render_frame(&styled, 3, 1, &mut buf);
+        Flames.render_frame(&styled, 1, &mut buf);
         assert!(!buf.contains('a'));
     }
 
@@ -90,7 +91,7 @@ mod tests {
     fn leading_edge_present_at_frame_2() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
-        Flames.render_frame(&styled, 2, 2, &mut buf);
+        Flames.render_frame(&styled, 2, &mut buf);
         // Frame 2: 0 revealed, 1 leading edge char — buf should be non-empty
         assert!(buf.len() > "\x1b[0m".len());
     }
@@ -101,7 +102,7 @@ mod tests {
         let mut buf = String::new();
         // age for char 0 = frame - 3; fully cooled when age >= COOLDOWN_FRAMES
         let snap_frame = 3 + COOLDOWN_FRAMES;
-        Flames.render_frame(&styled, 1, snap_frame, &mut buf);
+        Flames.render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }
 }

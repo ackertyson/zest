@@ -16,25 +16,26 @@ const GRADIENT: &[u8] = &[194, 157, 120, 83, 46, 40, 34];
 
 pub struct GreenFlash;
 
-fn cooldown_color(age: usize) -> u8 {
-    let steps = GRADIENT.len() - 1;
-    let idx = ((age * steps) / COOLDOWN_FRAMES).min(steps);
-    GRADIENT[idx]
-}
-
 impl Animation for GreenFlash {
-    fn total_frames(&self, n: usize) -> usize {
-        n + COOLDOWN_FRAMES
+    fn total_frames(&self, styled: &[StyledChar]) -> usize {
+        styled.len() + COOLDOWN_FRAMES
     }
 
     fn frame_delay_ms(&self) -> u64 {
         FRAME_DELAY_MS
     }
 
-    fn render_frame(&self, styled: &[StyledChar], n: usize, frame: usize, buf: &mut String) {
+    fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
+        let n = styled.len();
         let revealed = if frame >= 2 { (frame - 2).min(n) } else { 0 };
         let space_for_spinner = n.saturating_sub(revealed);
-        let has_spinner = frame >= 2 && space_for_spinner > 0;
+        // Don't draw the spinner on trailing whitespace or the final non-space character
+        // (e.g. the chevron ❯). Find the index of the last non-whitespace char and stop before it.
+        let last_content = styled
+            .iter()
+            .rposition(|sc| !sc.ch.is_whitespace())
+            .unwrap_or(n);
+        let has_spinner = frame >= 2 && space_for_spinner > 0 && revealed < last_content;
 
         // Revealed text: each char cools from HOT→target based on frames since it was revealed.
         for (i, sc) in styled[..revealed].iter().enumerate() {
@@ -44,7 +45,7 @@ impl Animation for GreenFlash {
                 buf.push_str("\x1b[0m");
                 buf.push_str(&sc.color_prefix);
             } else {
-                color256(buf, cooldown_color(age));
+                color256(buf, super::cooldown_color(age, COOLDOWN_FRAMES, GRADIENT));
             }
             buf.push(sc.ch);
         }
@@ -68,7 +69,7 @@ mod tests {
     fn render_frame_first_frame_empty() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        GreenFlash.render_frame(&styled, 3, 1, &mut buf);
+        GreenFlash.render_frame(&styled, 1, &mut buf);
         // Frame 1: nothing revealed, spinner not yet started
         assert!(!buf.contains('a'));
     }
@@ -77,7 +78,7 @@ mod tests {
     fn render_frame_reveals_chars() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
-        GreenFlash.render_frame(&styled, 2, 3, &mut buf);
+        GreenFlash.render_frame(&styled, 3, &mut buf);
         // Frame 3: 1 char revealed
         assert!(buf.contains('a'));
     }

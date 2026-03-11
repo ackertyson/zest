@@ -19,7 +19,7 @@ printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | zest
 Select an animation explicitly:
 
 ```bash
-printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | zest -a green-flash
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | zest green-flash
 ```
 
 Plain text fallback (no pipe):
