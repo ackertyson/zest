@@ -11,12 +11,14 @@ use style::parse_styled;
 
 struct CliArgs {
     animation: String,
+    zsh: bool,
     rest: Vec<String>,
 }
 
 fn parse_cli_args() -> CliArgs {
     let mut args = env::args().skip(1);
     let mut animation = anim::DEFAULT.to_string();
+    let mut zsh = false;
     let mut rest = Vec::new();
 
     while let Some(arg) = args.next() {
@@ -26,6 +28,9 @@ fn parse_cli_args() -> CliArgs {
                     animation = name;
                 }
             }
+            "--zsh" => {
+                zsh = true;
+            }
             "-h" | "--help" => {
                 eprintln!("Usage: zest [OPTIONS] [TEXT...]");
                 eprintln!();
@@ -33,13 +38,44 @@ fn parse_cli_args() -> CliArgs {
                 eprintln!();
                 eprintln!("Options:");
                 eprintln!("  -a, --animation <name>  Animation style (default: {})", anim::DEFAULT);
+                eprintln!("      --zsh               Wrap ANSI codes in %{{...%}} for zsh PROMPT");
                 eprintln!("  -h, --help              Show this help");
             }
             _ => rest.push(arg),
         }
     }
 
-    CliArgs { animation, rest }
+    CliArgs { animation, zsh, rest }
+}
+
+/// Wraps every ANSI escape sequence in `%{...%}` so zsh counts prompt width correctly.
+fn wrap_ansi_for_zsh(input: &str) -> String {
+    let mut out = String::with_capacity(input.len() + 32);
+    let mut chars = input.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\x1b' {
+            if chars.peek() == Some(&'[') {
+                // Collect the full CSI sequence (ends at first byte in 0x40–0x7E)
+                let mut seq = String::from("\x1b");
+                seq.push(chars.next().unwrap()); // '['
+                for c in chars.by_ref() {
+                    let done = ('\x40'..='\x7e').contains(&c);
+                    seq.push(c);
+                    if done {
+                        break;
+                    }
+                }
+                out.push_str("%{");
+                out.push_str(&seq);
+                out.push_str("%}");
+            } else {
+                out.push(ch);
+            }
+        } else {
+            out.push(ch);
+        }
+    }
+    out
 }
 
 fn read_input(rest: &[String]) -> String {
@@ -79,6 +115,8 @@ fn main() {
         return;
     }
 
+    let zsh = cli.zsh || env::var("ZSH_VERSION").is_ok();
+
     let styled = parse_styled(&raw_input);
     let n = styled.len();
     let total_frames = animation.total_frames(n);
@@ -103,9 +141,13 @@ fn main() {
         tty.flush().unwrap();
     }
 
-    // Final output to stdout (what fish captures as the prompt)
+    // Final output to stdout (what the shell captures as the prompt)
     let stdout = io::stdout();
     let mut out = stdout.lock();
-    write!(out, "{}", raw_input).unwrap();
+    if zsh {
+        write!(out, "{}", wrap_ansi_for_zsh(&raw_input)).unwrap();
+    } else {
+        write!(out, "{}", raw_input).unwrap();
+    }
     out.flush().unwrap();
 }

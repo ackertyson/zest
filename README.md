@@ -1,6 +1,6 @@
 # zest
 
-Animates your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on stdout — keeping it compatible with fish's prompt mechanics, which read the prompt from stdout of `fish_prompt`.
+Animates your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on stdout — compatible with fish and zsh prompt mechanics.
 
 ## Install
 
@@ -52,6 +52,21 @@ end
 ```
 
 Each time a new prompt renders, the text sweeps in with the selected animation and settles into its original colors.
+
+## Zsh integration
+
+Move your prompt-building logic into a function that outputs with `print -P` (which expands `%F{color}` etc. to ANSI codes), then pipe it through `zest`. zest auto-detects zsh via `$ZSH_VERSION` and wraps ANSI codes in `%{...%}` so zsh counts prompt width correctly.
+
+```zsh
+function my_prompt() {
+    print -Pn '%F{cyan}%~%f'
+    print -Pn '%F{cyan} ❯ %f'
+}
+setopt PROMPT_SUBST
+PROMPT='$(my_prompt | zest)'
+```
+
+If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-escapes, it works the same way — just pipe the output through `zest`.
 
 ## Animations
 
