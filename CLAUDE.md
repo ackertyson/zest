@@ -12,13 +12,36 @@ cargo test              # run tests
 # Piped ANSI input (primary usage with fish shell)
 printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run
 
+# Select animation explicitly
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- -a green-flash
+
 # Plain text fallback (no pipe)
 cargo run -- "hello world"
+
+# Help
+cargo run -- --help
 ```
 
 ## Architecture
 
-Single-file Rust CLI (`src/main.rs`). Reads a colorized prompt from **stdin** (or falls back to CLI args if stdin is a TTY) and animates it into view in the terminal.
+Rust CLI that reads a colorized prompt from **stdin** (or falls back to CLI args if stdin is a TTY) and animates it into view in the terminal.
+
+### File layout
+
+```
+src/
+  main.rs              -- CLI parsing, input reading, animation loop
+  style.rs             -- StyledChar, parse_styled(), color256() (shared infra)
+  anim/
+    mod.rs             -- Animation trait, resolve() dispatch, DEFAULT const
+    green_flash.rs     -- "green-flash" animation (default)
+```
+
+### CLI flags
+
+- `-a <name>` / `--animation <name>` — select animation (default: `green-flash`)
+- `-h` / `--help` — print usage
+- Unknown animation names warn to stderr and fall back to default
 
 ### Input handling
 
@@ -26,11 +49,31 @@ Single-file Rust CLI (`src/main.rs`). Reads a colorized prompt from **stdin** (o
 - **TTY fallback**: joins CLI args with spaces (plain text, no ANSI parsing needed)
 - Empty input exits silently
 
-### ANSI parsing
+### ANSI parsing (`style.rs`)
 
 The `parse_styled()` function walks the input char-by-char, extracting `StyledChar { ch, color_prefix }` for each visible character. It tracks cumulative SGR sequences (`\x1b[...m`) and resets on `\x1b[0m`. Non-SGR CSI sequences are stripped.
 
-### Animation model
+### Animation trait (`anim/mod.rs`)
+
+```rust
+pub trait Animation {
+    fn total_frames(&self, n: usize) -> usize;
+    fn frame_delay_ms(&self) -> u64;
+    fn render_frame(&self, styled: &[StyledChar], n: usize, frame: usize, buf: &mut String);
+}
+```
+
+`main` owns the frame loop and calls into the trait. The loop clears `buf` before each `render_frame` call; animations only append.
+
+### Adding a new animation
+
+1. Create `src/anim/foo.rs` with struct implementing `Animation`
+2. Add `mod foo;` to `src/anim/mod.rs`
+3. Add match arm in `resolve()`
+
+No changes to `main.rs` or other animation files.
+
+### Green-flash animation (`anim/green_flash.rs`)
 
 Characters sweep in from the left, one per frame, starting at frame 2. A single **spinner character** (`-\|/` cycling) advances rightward one position per frame, acting as the leading edge.
 
@@ -40,11 +83,7 @@ Characters behind the spinner "cool down" over `COOLDOWN_FRAMES` frames:
 
 After the animation loop, the **exact original input** is written as the final frame (pixel-perfect reproduction).
 
-### Color scheme
-
 Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `GRADIENT` constant defines discrete steps from hot (index 194, `#d7ffd7`) to dark green (index 34, `#00af00`). The spinner uses standard 16-color bright white (`\x1b[97m`). Final resting colors come from the original prompt's ANSI sequences.
-
-### Key constants to tune
 
 | Constant | Purpose |
 |---|---|
