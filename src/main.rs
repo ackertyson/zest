@@ -98,22 +98,30 @@ fn main() {
 
     let mut frame_buf = String::with_capacity(styled.len() * 16);
 
-    // Write animation frames directly to the terminal (/dev/tty) so they're
-    // visible even when stdout is captured (e.g. by fish's fish_prompt).
-    // The final prompt goes to stdout for fish to use.
-    if let Ok(mut tty) = OpenOptions::new().write(true).open("/dev/tty") {
-        write!(tty, "\x1b[?25l").unwrap(); // hide cursor
-        for frame in 1..=total_frames {
-            frame_buf.clear();
-            animation.render_frame(&styled, frame, &mut frame_buf);
-            write!(tty, "\r{}", frame_buf).unwrap();
+    // Skip animation for very short prompts — too few chars for the sweep to read as intentional.
+    const MIN_ANIMATION_CHARS: usize = 6;
+    // Cap total animation duration; scale frame delay down for long prompts.
+    // e.g. 10 chars → 10ms/frame, 40 chars → 8ms, 60 chars → 5ms (floor).
+    const TARGET_DURATION_MS: u64 = 400;
+
+    if styled.len() >= MIN_ANIMATION_CHARS {
+        if let Ok(mut tty) = OpenOptions::new().write(true).open("/dev/tty") {
+            let frame_delay = animation.frame_delay_ms()
+                .min(TARGET_DURATION_MS / total_frames as u64)
+                .max(5);
+            write!(tty, "\x1b[?25l").unwrap(); // hide cursor
+            for frame in 1..=total_frames {
+                frame_buf.clear();
+                animation.render_frame(&styled, frame, &mut frame_buf);
+                write!(tty, "\r{}", frame_buf).unwrap();
+                tty.flush().unwrap();
+                thread::sleep(Duration::from_millis(frame_delay));
+            }
+            // Clear animation line before final output
+            write!(tty, "\r\x1b[K").unwrap();
+            write!(tty, "\x1b[?25h").unwrap(); // restore cursor
             tty.flush().unwrap();
-            thread::sleep(Duration::from_millis(animation.frame_delay_ms()));
         }
-        // Clear animation line before final output
-        write!(tty, "\r\x1b[K").unwrap();
-        write!(tty, "\x1b[?25h").unwrap(); // restore cursor
-        tty.flush().unwrap();
     }
 
     // Final output to stdout (what the shell captures as the prompt)
