@@ -1,5 +1,6 @@
 mod flames;
 mod green_flash;
+mod lightning;
 mod matrix;
 mod neon;
 mod scan;
@@ -21,6 +22,7 @@ pub const LIST: &[(&str, &str)] = &[
     ("matrix", "Random ASCII decodes into correct chars, green gradient"),
     ("scan", "CRT phosphor sweep, brief white afterglow"),
     ("neon", "Flickering neon sign warm-up, magenta-purple glow"),
+    ("lightning", "Instant reveal with bright yellow flash band sweeping left-to-right"),
 ];
 
 pub trait Animation {
@@ -68,6 +70,7 @@ pub fn resolve(name: &str) -> Option<Box<dyn Animation>> {
         "matrix"        => Some(Box::new(matrix::Matrix)),
         "scan"          => Some(Box::new(scan::Scan)),
         "neon"          => Some(Box::new(neon::Neon)),
+        "lightning"     => Some(Box::new(lightning::Lightning)),
         _ => None,
     }
 }
