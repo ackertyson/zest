@@ -7,7 +7,7 @@ pub struct StyledChar {
 
 /// Parse ANSI-colored text into visible characters with their associated color sequences.
 pub fn parse_styled(input: &str) -> Vec<StyledChar> {
-    let mut result = Vec::new();
+    let mut result = Vec::with_capacity(input.len());
     let mut current_color = String::new();
     let mut chars = input.chars().peekable();
 

@@ -50,9 +50,9 @@ fn parse_cli_args() -> CliArgs {
     CliArgs { zsh, positional }
 }
 
-fn read_input(rest: &[String]) -> String {
-    let stdin = io::stdin();
-    if !stdin.is_terminal() {
+fn read_input(is_piped: bool, rest: &[String]) -> String {
+    if is_piped {
+        let stdin = io::stdin();
         // Reading from pipe
         let mut input = String::new();
         stdin.lock().read_to_string(&mut input).unwrap();
@@ -88,9 +88,9 @@ fn main() {
     };
 
     let raw_input = if is_piped {
-        read_input(&[])
+        read_input(true, &[])
     } else {
-        read_input(text_args)
+        read_input(false, text_args)
     };
 
     if raw_input.is_empty() {
