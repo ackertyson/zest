@@ -79,3 +79,6 @@ If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-
 | `flames-blue`   | Blue fire sweep, cooling from white-blue through cyan to dark navy                   |
 | `flames-green`  | Green fire sweep, cooling from bright green to dark green                            |
 | `flames-purple` | Purple fire sweep, cooling from pink-magenta through purple to dark violet           |
+| `matrix`        | Random ASCII scrambles decode into real chars through a bright-to-dark green gradient |
+| `scan`          | CRT phosphor sweep — real chars appear behind a brief white afterglow                |
+| `neon`          | Characters flicker on then glow magenta-to-purple before settling                    |

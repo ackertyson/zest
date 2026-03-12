@@ -1,5 +1,8 @@
 mod flames;
 mod green_flash;
+mod matrix;
+mod neon;
+mod scan;
 
 use crate::style::StyledChar;
 
@@ -14,6 +17,9 @@ pub const LIST: &[(&str, &str)] = &[
     ("flames-blue", "Blue fire sweep with flickering dot-matrix characters"),
     ("flames-green", "Green fire sweep with flickering dot-matrix characters"),
     ("flames-purple", "Purple fire sweep with flickering dot-matrix characters"),
+    ("matrix", "Random ASCII decodes into correct chars, green gradient"),
+    ("scan", "CRT phosphor sweep, brief white afterglow"),
+    ("neon", "Flickering neon sign warm-up, magenta-purple glow"),
 ];
 
 pub trait Animation {
@@ -35,6 +41,9 @@ pub fn resolve(name: &str) -> Option<Box<dyn Animation>> {
         "flames-green"  => Some(Box::new(Flames { gradient: flames::GRADIENT_GREEN })),
         "flames-purple" => Some(Box::new(Flames { gradient: flames::GRADIENT_PURPLE })),
         "green-flash"   => Some(Box::new(GreenFlash)),
+        "matrix"        => Some(Box::new(matrix::Matrix)),
+        "scan"          => Some(Box::new(scan::Scan)),
+        "neon"          => Some(Box::new(neon::Neon)),
         _ => None,
     }
 }

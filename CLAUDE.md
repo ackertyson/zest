@@ -36,7 +36,10 @@ src/
   anim/
     mod.rs             -- Animation trait, resolve() dispatch, cooldown_color(), DEFAULT const
     green_flash.rs     -- "green-flash" animation (default)
-    flames.rs          -- "flames" animation
+    flames.rs          -- "flames" / "flames-blue" / "flames-green" / "flames-purple" animations
+    matrix.rs          -- "matrix" animation
+    scan.rs            -- "scan" animation
+    neon.rs            -- "neon" animation
 ```
 
 ### CLI
@@ -87,6 +90,9 @@ Available animations (pass as first positional arg):
 | `flames-blue` | Blue fire sweep with flickering dot-matrix characters |
 | `flames-green` | Green fire sweep with flickering dot-matrix characters |
 | `flames-purple` | Purple fire sweep with flickering dot-matrix characters |
+| `matrix` | Random ASCII decodes into correct chars, green gradient |
+| `scan` | CRT phosphor sweep, brief white afterglow |
+| `neon` | Flickering neon sign warm-up, magenta-purple glow |
 
 ### Green-flash animation (`anim/green_flash.rs`)
 
