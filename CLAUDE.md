@@ -39,7 +39,7 @@ src/
     flames.rs          -- "flames" / "flames-blue" / "flames-green" / "flames-purple" animations
     matrix.rs          -- "matrix" animation
     scan.rs            -- "scan" animation
-    neon.rs            -- "neon" animation
+    lightning.rs       -- "lightning" animation
 ```
 
 ### CLI
@@ -63,8 +63,8 @@ The `parse_styled()` function walks the input char-by-char, extracting `StyledCh
 
 ```rust
 pub trait Animation {
-    fn total_frames(&self, styled: &[StyledChar]) -> usize;
-    fn frame_delay_ms(&self) -> u64;
+    fn cooldown_frames(&self) -> usize;
+    fn total_frames(&self, styled: &[StyledChar]) -> usize; // default: len + cooldown_frames
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String);
 }
 ```
@@ -92,7 +92,7 @@ Available animations (pass as first positional arg):
 | `flames-purple` | Purple fire sweep with flickering dot-matrix characters |
 | `matrix` | Random ASCII decodes into correct chars, green gradient |
 | `scan` | CRT phosphor sweep, brief white afterglow |
-| `neon` | Flickering neon sign warm-up, magenta-purple glow |
+| `lightning` | Instant reveal with bright yellow flash band sweeping left-to-right |
 
 ### Green-flash animation (`anim/green_flash.rs`)
 
@@ -124,6 +124,30 @@ Characters cool down over `COOLDOWN_FRAMES` frames through an orange-yellow → 
 | `COOLDOWN_FRAMES` | Length of the fire wake behind the leading edge |
 | `GRADIENT` | 256-color indices from hot (`#ffff00`) to dark red (`#870000`) |
 | `FLAME_CHARS` | Braille/block chars used during the fire phase |
+
+### Lightning animation (`anim/lightning.rs`)
+
+The entire prompt is shown at its real colors from frame 1 — no reveal sweep. A **flash band** of 9 characters sweeps left-to-right at half speed (one character position every two frames), giving it a slow, dramatic feel.
+
+Each character in the band is rendered with both a foreground and background color based on its distance from the band center:
+
+| Distance | Foreground | Background |
+|---|---|---|
+| 0 (core) | 231 `#ffffff` white | 100 `#878700` dark yellow |
+| 1 | 226 `#ffff00` bright yellow | 58 `#5f5f00` dark olive |
+| 2 | 220 `#ffd700` gold | 238 `#444444` dark grey |
+| 3 | 214 `#ffaf00` orange-gold | 237 `#3a3a3a` darker grey |
+| 4 (edge) | 178 `#d7af00` dark gold | 236 `#303030` near-black |
+
+Characters outside the band always show their actual prompt color. After the band exits the right edge, all characters are at their real colors.
+
+`total_frames` is overridden to `2 * (n + BAND_HALF) + 2` to account for the half-speed movement.
+
+| Constant | Purpose |
+|---|---|
+| `BAND_HALF` | Half-width of the flash band (4 → 9 chars total) |
+| `FLASH_FG` | Foreground 256-color gradient from center outward |
+| `FLASH_BG` | Background 256-color gradient from center outward |
 
 ### Fish shell integration
 
