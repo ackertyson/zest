@@ -5,6 +5,8 @@ mod style;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{self, IsTerminal, Read as IoRead, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -112,11 +114,18 @@ fn main() {
 
     if styled.len() >= MIN_ANIMATION_CHARS {
         if let Ok(mut tty) = OpenOptions::new().write(true).open("/dev/tty") {
+            let interrupted = Arc::new(AtomicBool::new(false));
+            let flag = interrupted.clone();
+            ctrlc::set_handler(move || flag.store(true, Ordering::Relaxed)).ok();
+
             let frame_delay = anim::FRAME_DELAY_MS
                 .min(TARGET_DURATION_MS / total_frames as u64)
                 .max(5);
             write!(tty, "\x1b[?25l").unwrap(); // hide cursor
             for frame in 1..=total_frames {
+                if interrupted.load(Ordering::Relaxed) {
+                    break;
+                }
                 frame_buf.clear();
                 animation.render_frame(&styled, frame, &mut frame_buf);
                 write!(tty, "\r{}", frame_buf).unwrap();
