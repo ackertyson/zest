@@ -5,6 +5,7 @@ mod style;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{self, IsTerminal, Read as IoRead, Write};
+use std::os::fd::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -72,6 +73,13 @@ fn read_input(is_piped: bool, rest: &[String]) -> String {
     }
 }
 
+/// Check if there are bytes waiting in the tty input buffer without consuming them.
+fn tty_has_input(tty: &std::fs::File) -> bool {
+    let mut count: libc::c_int = 0;
+    unsafe { libc::ioctl(tty.as_raw_fd(), libc::FIONREAD, &mut count) };
+    count > 0
+}
+
 fn main() {
     let cli = parse_cli_args();
 
@@ -113,7 +121,7 @@ fn main() {
     const TARGET_DURATION_MS: u64 = 400;
 
     if styled.len() >= MIN_ANIMATION_CHARS {
-        if let Ok(mut tty) = OpenOptions::new().write(true).open("/dev/tty") {
+        if let Ok(mut tty) = OpenOptions::new().read(true).write(true).open("/dev/tty") {
             let interrupted = Arc::new(AtomicBool::new(false));
             let flag = interrupted.clone();
             ctrlc::set_handler(move || flag.store(true, Ordering::Relaxed)).ok();
@@ -123,7 +131,7 @@ fn main() {
                 .max(5);
             write!(tty, "\x1b[?25l").unwrap(); // hide cursor
             for frame in 1..=total_frames {
-                if interrupted.load(Ordering::Relaxed) {
+                if interrupted.load(Ordering::Relaxed) || tty_has_input(&tty) {
                     break;
                 }
                 frame_buf.clear();
