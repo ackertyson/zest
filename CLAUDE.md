@@ -84,6 +84,9 @@ Available animations (pass as first positional arg):
 |---|---|
 | `green-flash` | Green cooling gradient sweep (default) |
 | `flames` | Orange-to-red fire sweep with flickering dot-matrix characters |
+| `flames-blue` | Blue fire sweep with flickering dot-matrix characters |
+| `flames-green` | Green fire sweep with flickering dot-matrix characters |
+| `flames-purple` | Purple fire sweep with flickering dot-matrix characters |
 
 ### Green-flash animation (`anim/green_flash.rs`)
 

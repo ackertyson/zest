@@ -31,7 +31,13 @@ fn parse_cli_args() -> CliArgs {
                 eprintln!("Animates a colorized prompt into view.");
                 eprintln!();
                 eprintln!("Arguments:");
-                eprintln!("  [ANIMATION]  Animation style: green-flash, flames (default: {})", anim::DEFAULT);
+                eprintln!("  [ANIMATION]  Animation to play (default: {})", anim::DEFAULT);
+                eprintln!();
+                eprintln!("Animations:");
+                for (name, desc) in anim::LIST {
+                    let marker = if *name == anim::DEFAULT { " (default)" } else { "" };
+                    eprintln!("  {:<14}{}{}", name, desc, marker);
+                }
                 eprintln!();
                 eprintln!("Options:");
                 eprintln!("      --zsh    Wrap ANSI codes in %{{...%}} for zsh PROMPT");

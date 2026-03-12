@@ -2,6 +2,8 @@
 
 Animates your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on stdout — compatible with fish and zsh prompt mechanics.
 
+This util is just for fun and is not battle-tested! Use at your own risk.
+
 ## Install
 
 ```bash
@@ -70,7 +72,10 @@ If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-
 
 ## Animations
 
-| Name          | Description                                                                          |
-|---------------|--------------------------------------------------------------------------------------|
-| `green-flash` | Characters sweep in left-to-right with a green cooling gradient (default)            |
-| `flames`      | Characters sweep in as flickering dot-matrix fire, cooling from orange-yellow to red |
+| Name            | Description                                                                          |
+|-----------------|--------------------------------------------------------------------------------------|
+| `green-flash`   | Characters sweep in left-to-right with a green cooling gradient (default)            |
+| `flames`        | Characters sweep in as flickering dot-matrix fire, cooling from orange-yellow to red |
+| `flames-blue`   | Blue fire sweep, cooling from white-blue through cyan to dark navy                   |
+| `flames-green`  | Green fire sweep, cooling from bright green to dark green                            |
+| `flames-purple` | Purple fire sweep, cooling from pink-magenta through purple to dark violet           |
