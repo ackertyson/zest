@@ -4,7 +4,6 @@ use crate::style::{color256, StyledChar};
 
 use super::Animation;
 
-const FRAME_DELAY_MS: u64 = 10;
 const COOLDOWN_FRAMES: usize = 14;
 
 // Braille and block chars for a dot-matrix / fire-texture feel
@@ -36,34 +35,18 @@ pub struct Flames {
     pub(super) gradient: &'static [u8],
 }
 
-/// Deterministic pseudo-random char selection based on position and frame.
-/// Uses a splitmix64-style finalizer so all output bits avalanche from all
-/// input bits — avoids the low-bit rigidity of a simple multiply-mod.
 fn flame_char(pos: usize, frame: usize) -> char {
-    let mut h = pos.wrapping_add(frame.wrapping_mul(0x9e3779b97f4a7c15));
-    h = (h ^ (h >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
-    h = (h ^ (h >> 27)).wrapping_mul(0x94d049bb133111eb);
-    h ^= h >> 31;
-    FLAME_CHARS[h % FLAME_CHARS.len()]
+    FLAME_CHARS[super::hash(pos, frame) % FLAME_CHARS.len()]
 }
 
 impl Animation for Flames {
-    fn total_frames(&self, styled: &[StyledChar]) -> usize {
-        styled.len() + COOLDOWN_FRAMES
-    }
-
-    fn frame_delay_ms(&self) -> u64 {
-        FRAME_DELAY_MS
-    }
+    fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let n = styled.len();
-        let revealed = if frame >= 2 { (frame - 2).min(n) } else { 0 };
-        let last_content = styled
-            .iter()
-            .rposition(|sc| !sc.ch.is_whitespace())
-            .unwrap_or(n);
-        let has_leading = frame >= 2 && revealed < n && revealed < last_content;
+        let revealed = super::revealed(frame, n);
+        let last_content = super::last_content(styled);
+        let has_leading = super::has_leading(frame, revealed, n, last_content);
 
         // Revealed chars: show flickering dot-matrix during cooldown, then snap to real color.
         // Characters at or past last_content (chevron, trailing whitespace) skip the flame

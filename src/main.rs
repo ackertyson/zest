@@ -112,7 +112,7 @@ fn main() {
 
     if styled.len() >= MIN_ANIMATION_CHARS {
         if let Ok(mut tty) = OpenOptions::new().write(true).open("/dev/tty") {
-            let frame_delay = animation.frame_delay_ms()
+            let frame_delay = anim::FRAME_DELAY_MS
                 .min(TARGET_DURATION_MS / total_frames as u64)
                 .max(5);
             write!(tty, "\x1b[?25l").unwrap(); // hide cursor

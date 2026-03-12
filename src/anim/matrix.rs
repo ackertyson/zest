@@ -2,7 +2,6 @@ use crate::style::{color256, StyledChar};
 
 use super::Animation;
 
-const FRAME_DELAY_MS: u64 = 10;
 const COOLDOWN_FRAMES: usize = 12;
 
 const MATRIX_CHARS: &[u8] =
@@ -15,30 +14,17 @@ const GRADIENT: &[u8] = &[118, 82, 46, 40, 34, 28];
 pub struct Matrix;
 
 fn matrix_char(pos: usize, frame: usize) -> char {
-    let mut h = pos.wrapping_add(frame.wrapping_mul(0x9e3779b97f4a7c15));
-    h = (h ^ (h >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
-    h = (h ^ (h >> 27)).wrapping_mul(0x94d049bb133111eb);
-    h ^= h >> 31;
-    MATRIX_CHARS[h % MATRIX_CHARS.len()] as char
+    MATRIX_CHARS[super::hash(pos, frame) % MATRIX_CHARS.len()] as char
 }
 
 impl Animation for Matrix {
-    fn total_frames(&self, styled: &[StyledChar]) -> usize {
-        styled.len() + COOLDOWN_FRAMES
-    }
-
-    fn frame_delay_ms(&self) -> u64 {
-        FRAME_DELAY_MS
-    }
+    fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let n = styled.len();
-        let revealed = if frame >= 2 { (frame - 2).min(n) } else { 0 };
-        let last_content = styled
-            .iter()
-            .rposition(|sc| !sc.ch.is_whitespace())
-            .unwrap_or(n);
-        let has_leading = frame >= 2 && revealed < n && revealed < last_content;
+        let revealed = super::revealed(frame, n);
+        let last_content = super::last_content(styled);
+        let has_leading = super::has_leading(frame, revealed, n, last_content);
 
         for (i, sc) in styled[..revealed].iter().enumerate() {
             let age = frame.saturating_sub(i + 3);

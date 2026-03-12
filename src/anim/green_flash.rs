@@ -5,7 +5,6 @@ use crate::style::{color256, StyledChar};
 use super::Animation;
 
 const SPINNERS: [char; 4] = ['-', '\\', '|', '/'];
-const FRAME_DELAY_MS: u64 = 10;
 const COOLDOWN_FRAMES: usize = 12;
 
 // 256-color gradient from hot (bright greenish-white) to resting dark green.
@@ -17,25 +16,15 @@ const GRADIENT: &[u8] = &[194, 157, 120, 83, 46, 40, 34];
 pub struct GreenFlash;
 
 impl Animation for GreenFlash {
-    fn total_frames(&self, styled: &[StyledChar]) -> usize {
-        styled.len() + COOLDOWN_FRAMES
-    }
-
-    fn frame_delay_ms(&self) -> u64 {
-        FRAME_DELAY_MS
-    }
+    fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let n = styled.len();
-        let revealed = if frame >= 2 { (frame - 2).min(n) } else { 0 };
-        let space_for_spinner = n.saturating_sub(revealed);
+        let revealed = super::revealed(frame, n);
         // Don't draw the spinner on trailing whitespace or the final non-space character
         // (e.g. the chevron ❯). Find the index of the last non-whitespace char and stop before it.
-        let last_content = styled
-            .iter()
-            .rposition(|sc| !sc.ch.is_whitespace())
-            .unwrap_or(n);
-        let has_spinner = frame >= 2 && space_for_spinner > 0 && revealed < last_content;
+        let last_content = super::last_content(styled);
+        let has_spinner = super::has_leading(frame, revealed, n, last_content);
 
         // Revealed text: each char cools from HOT→target based on frames since it was revealed.
         for (i, sc) in styled[..revealed].iter().enumerate() {

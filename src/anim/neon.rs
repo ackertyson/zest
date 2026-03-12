@@ -2,7 +2,6 @@ use crate::style::{color256, StyledChar};
 
 use super::Animation;
 
-const FRAME_DELAY_MS: u64 = 10;
 const FLICKER_FRAMES: usize = 4;
 const COOLDOWN_FRAMES: usize = 14; // 4 flicker + 10 steady glow
 
@@ -12,30 +11,14 @@ const GRADIENT: &[u8] = &[231, 201, 207, 165, 129, 93, 57];
 
 pub struct Neon;
 
-fn neon_hash(pos: usize, frame: usize) -> u64 {
-    let mut h = pos.wrapping_add(frame.wrapping_mul(0x9e3779b97f4a7c15));
-    h = (h ^ (h >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
-    h = (h ^ (h >> 27)).wrapping_mul(0x94d049bb133111eb);
-    (h ^ (h >> 31)) as u64
-}
-
 impl Animation for Neon {
-    fn total_frames(&self, styled: &[StyledChar]) -> usize {
-        styled.len() + COOLDOWN_FRAMES
-    }
-
-    fn frame_delay_ms(&self) -> u64 {
-        FRAME_DELAY_MS
-    }
+    fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let n = styled.len();
-        let revealed = if frame >= 2 { (frame - 2).min(n) } else { 0 };
-        let last_content = styled
-            .iter()
-            .rposition(|sc| !sc.ch.is_whitespace())
-            .unwrap_or(n);
-        let has_leading = frame >= 2 && revealed < n && revealed < last_content;
+        let revealed = super::revealed(frame, n);
+        let last_content = super::last_content(styled);
+        let has_leading = super::has_leading(frame, revealed, n, last_content);
 
         for (i, sc) in styled[..revealed].iter().enumerate() {
             let age = frame.saturating_sub(i + 3);
@@ -45,7 +28,7 @@ impl Animation for Neon {
                 buf.push(sc.ch);
             } else if age < FLICKER_FRAMES {
                 // Flicker phase: probability of being "on" increases with age
-                let on = neon_hash(i, frame) % 4 < (age + 1) as u64;
+                let on = super::hash(i, frame) % 4 < age + 1;
                 if on {
                     color256(buf, GRADIENT[0]);
                     buf.push(sc.ch);

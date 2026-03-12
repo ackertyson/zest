@@ -2,7 +2,6 @@ use crate::style::{color256, StyledChar};
 
 use super::Animation;
 
-const FRAME_DELAY_MS: u64 = 10;
 const COOLDOWN_FRAMES: usize = 4;
 
 // 256-color gradient: white → fading white
@@ -12,22 +11,13 @@ const GRADIENT: &[u8] = &[231, 195, 189, 183];
 pub struct Scan;
 
 impl Animation for Scan {
-    fn total_frames(&self, styled: &[StyledChar]) -> usize {
-        styled.len() + COOLDOWN_FRAMES
-    }
-
-    fn frame_delay_ms(&self) -> u64 {
-        FRAME_DELAY_MS
-    }
+    fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let n = styled.len();
-        let revealed = if frame >= 2 { (frame - 2).min(n) } else { 0 };
-        let last_content = styled
-            .iter()
-            .rposition(|sc| !sc.ch.is_whitespace())
-            .unwrap_or(n);
-        let has_leading = frame >= 2 && revealed < n && revealed < last_content;
+        let revealed = super::revealed(frame, n);
+        let last_content = super::last_content(styled);
+        let has_leading = super::has_leading(frame, revealed, n, last_content);
 
         for (i, sc) in styled[..revealed].iter().enumerate() {
             let age = frame.saturating_sub(i + 3);
