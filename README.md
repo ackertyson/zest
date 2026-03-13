@@ -1,6 +1,6 @@
 # zest
 
-Animates your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on stdout — compatible with fish and zsh prompt mechanics.
+Animates your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on `stdout`, compatible with fish and zsh prompt mechanics.
 
 This util is just for fun and is not battle-tested! Use at your own risk.
 
@@ -8,33 +8,15 @@ This util is just for fun and is not battle-tested! Use at your own risk.
 
 ## Install
 
+Install [Rust](https://rust-lang.org/tools/install/), then...
+
 ```bash
 cargo install --path .
 ```
 
-## Usage
+## Fish integration
 
-Pipe any ANSI-colored text to `zest` to animates it:
-
-```bash
-printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | zest
-```
-
-Select an animation explicitly:
-
-```bash
-printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | zest green-flash
-```
-
-Plain text fallback (no pipe):
-
-```bash
-zest "hello world"
-```
-
-## Fish shell integration
-
-Wrap your prompt's output commands in a `begin ... end | zest` block. Any variables you need to capture before output (e.g. `$pipestatus`, `$status`) should be set before the block as usual — fish scoping means they'll still be readable inside it.
+Wrap your prompt's output commands in a `begin ... end | zest` block. Any variables you need to capture before output (e.g. `$pipestatus`, `$status`) should be set before the block.
 
 ```fish
 function fish_prompt
@@ -55,7 +37,7 @@ function fish_prompt
 end
 ```
 
-Each time a new prompt renders, the text sweeps in with the selected animation and settles into its original colors.
+Each time a new prompt renders, the selected animation fires and then settles into the configured prompt.
 
 ## Zsh integration
 
@@ -83,4 +65,4 @@ If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-
 | `flames-purple` | Purple fire sweep, cooling from pink-magenta through purple to dark violet            |
 | `matrix`        | Random ASCII scrambles decode into real chars through a bright-to-dark green gradient |
 | `scan`          | CRT phosphor sweep — real chars appear behind a brief white afterglow                 |
-| `lightning`     | Instant reveal with a bright yellow flash band sweep.                                 |
+| `lightning`     | Instant reveal with a bright yellow flash band sweep                                  |
