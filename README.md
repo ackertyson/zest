@@ -4,6 +4,8 @@ Animates your terminal prompt into view with a choice of effects. The animation 
 
 This util is just for fun and is not battle-tested! Use at your own risk.
 
+![zest chili pepper logo](logo.jpg)
+
 ## Install
 
 ```bash
