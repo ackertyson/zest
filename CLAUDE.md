@@ -90,6 +90,7 @@ Available animations (pass as first positional arg):
 | `flames-blue` | Blue fire sweep with flickering dot-matrix characters |
 | `flames-green` | Green fire sweep with flickering dot-matrix characters |
 | `flames-purple` | Purple fire sweep with flickering dot-matrix characters |
+| `flames-pink` | Hot pink/magenta fire sweep with flickering dot-matrix characters |
 | `matrix` | Random ASCII decodes into correct chars, green gradient |
 | `scan` | CRT phosphor sweep, brief white afterglow |
 | `lightning` | Instant reveal with bright yellow flash band sweeping left-to-right |

@@ -18,9 +18,10 @@ pub const LIST: &[(&str, &str)] = &[
     ("flames-blue", "Blue fire sweep with flickering dot-matrix characters"),
     ("flames-green", "Green fire sweep with flickering dot-matrix characters"),
     ("flames-purple", "Purple fire sweep with flickering dot-matrix characters"),
+    ("flames-pink", "Hot pink/magenta fire sweep with flickering dot-matrix characters"),
     ("matrix", "Random ASCII decodes into correct chars, green gradient"),
     ("scan", "CRT phosphor sweep, brief white afterglow"),
-    ("lightning", "Instant reveal with bright yellow flash band sweeping left-to-right"),
+    ("lightning", "Instant reveal with bright yellow flash band sweep"),
 ];
 
 pub trait Animation {
@@ -64,6 +65,7 @@ pub fn resolve(name: &str) -> Option<Box<dyn Animation>> {
         "flames-blue"   => Some(Box::new(Flames { gradient: flames::GRADIENT_BLUE })),
         "flames-green"  => Some(Box::new(Flames { gradient: flames::GRADIENT_GREEN })),
         "flames-purple" => Some(Box::new(Flames { gradient: flames::GRADIENT_PURPLE })),
+        "flames-pink"   => Some(Box::new(Flames { gradient: flames::GRADIENT_PINK })),
         "green-flash"   => Some(Box::new(GreenFlash)),
         "matrix"        => Some(Box::new(matrix::Matrix)),
         "scan"          => Some(Box::new(scan::Scan)),

@@ -28,8 +28,8 @@ fn parse_cli_args() -> CliArgs {
             "--zsh" => {
                 zsh = true;
             }
-            "-h" | "--help" => {
-                eprintln!("Usage: zest [ANIMATION] [OPTIONS]");
+            "-h" | "--help" | "help" => {
+                eprintln!("Usage: zest [OPTIONS] [ANIMATION]");
                 eprintln!();
                 eprintln!("Animates a colorized prompt into view.");
                 eprintln!();

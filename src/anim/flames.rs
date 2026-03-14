@@ -31,6 +31,9 @@ pub(super) const GRADIENT_GREEN: &[u8] = &[157, 120, 83, 46, 40, 34, 28, 22];
 //   165=#d700ff  129=#af00ff   93=#8700ff   57=#5f00ff   55=#5f00af
 pub(super) const GRADIENT_PURPLE: &[u8] = &[219, 213, 207, 201, 165, 129, 93, 57, 55];
 
+// solid hot pink — single color, no gradient: 198=#ff0087
+pub(super) const GRADIENT_PINK: &[u8] = &[198];
+
 pub struct Flames {
     pub(super) gradient: &'static [u8],
 }

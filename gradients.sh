@@ -1,0 +1,35 @@
+#!/bin/sh
+# Static gradient swatches for each zest animation
+
+swatch() {
+    name=$1; shift
+    printf '%-14s ' "$name"
+    for c in "$@"; do
+        printf '\033[38;5;%dm█' "$c"
+    done
+    printf '\033[0m\n'
+}
+
+lightning_swatch() {
+    printf '%-14s ' "lightning"
+    fgs="231 226 220 214 178"
+    bgs="100  58 238 237 236"
+    n=5
+    i=1
+    for fg in $fgs; do
+        bg=$(echo $bgs | cut -d' ' -f$i)
+        printf '\033[38;5;%dm\033[48;5;%dm█' "$fg" "$bg"
+        i=$((i+1))
+    done
+    printf '\033[0m\n'
+}
+
+swatch "green-flash"   194 157 120  83  46  40  34
+swatch "flames"        226 220 214 208 202 196 160  88
+swatch "flames-blue"   231 195 159 123  87  51  45  39  33  27  21  18  17
+swatch "flames-green"  157 120  83  46  40  34  28  22
+swatch "flames-purple" 219 213 207 201 165 129  93  57  55
+swatch "flames-pink"   198 198 198 198 198 198
+swatch "matrix"        118  82  46  40  34  28
+swatch "scan"          231 195 189 183
+lightning_swatch
