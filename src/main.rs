@@ -152,22 +152,24 @@ fn main() {
                 tty.flush().unwrap();
                 thread::sleep(Duration::from_millis(frame_delay));
             }
-            // Return cursor to col 0 without erasing — animation's last frame already shows the
-            // final prompt at real colors. The shell then writes stdout from col 0, overwriting
-            // the same content with no blank gap in between.
+            // Return cursor to col 0 without erasing, keeping it hidden. The cursor restore is
+            // emitted via stdout so it becomes visible only after the shell renders the prompt,
+            // eliminating the brief flash of a visible cursor at col 0.
             write!(tty, "\r").unwrap();
-            write!(tty, "\x1b[?25h").unwrap(); // restore cursor
             tty.flush().unwrap();
         }
     }
 
-    // Final output to stdout (what the shell captures as the prompt)
+    // Final output to stdout (what the shell captures as the prompt).
+    // \x1b[?25h (cursor restore) is appended here so it takes effect only after the shell
+    // writes the prompt — preventing the cursor from briefly appearing at col 0.
     let stdout = io::stdout();
     let mut out = stdout.lock();
     if zsh {
-        write!(out, "{}", shell::wrap_ansi_for_zsh(&raw_input)).unwrap();
+        // Wrap cursor restore in %{...%} so zsh doesn't count its bytes toward prompt width.
+        write!(out, "{}%{{\x1b[?25h%}}", shell::wrap_ansi_for_zsh(&raw_input)).unwrap();
     } else {
-        write!(out, "{}", raw_input).unwrap();
+        write!(out, "{}\x1b[?25h", raw_input).unwrap();
     }
     out.flush().unwrap();
 }
