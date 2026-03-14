@@ -36,29 +36,17 @@ impl Animation for Matrix {
     fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
-        let n = styled.len();
-        let revealed = super::revealed(frame, n);
-        let last_content = super::last_content(styled);
-        let has_leading = super::has_leading(frame, revealed, n, last_content);
-
-        for (i, sc) in styled[..revealed].iter().enumerate() {
-            let age = frame.saturating_sub(i + 3);
-            if age >= COOLDOWN_FRAMES || i >= last_content {
-                buf.push_str("\x1b[0m");
-                buf.push_str(&sc.color_prefix);
-                buf.push(sc.ch);
-            } else {
-                color256(buf, super::cooldown_color(age, COOLDOWN_FRAMES, self.gradient));
-                buf.push(matrix_char(i, frame));
-            }
-        }
-
-        if has_leading {
-            color256(buf, self.gradient[0]);
-            buf.push(matrix_char(revealed, frame));
-        }
-
-        buf.push_str("\x1b[0m");
+        let gradient = self.gradient;
+        super::render_sweep(
+            styled, frame, buf,
+            COOLDOWN_FRAMES, gradient,
+            true,
+            |pos, frame, _sc| matrix_char(pos, frame),
+            |_frame, revealed, _styled, buf| {
+                color256(buf, gradient[0]);
+                buf.push(matrix_char(revealed, frame));
+            },
+        );
     }
 }
 

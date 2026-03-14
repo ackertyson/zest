@@ -4,7 +4,7 @@ mod lightning;
 mod matrix;
 mod scan;
 
-use crate::style::StyledChar;
+use crate::style::{color256, StyledChar};
 
 
 pub const DEFAULT: &str = "sprout";
@@ -22,6 +22,7 @@ pub const COLORS: &[(&str, &[&str])] = &[
     ("sprout",  &["green", "orange", "blue", "purple", "pink"]),
     ("flames",  &["orange", "blue", "green", "purple", "pink"]),
     ("matrix",  &["green", "blue", "red", "orange", "purple", "pink"]),
+    ("scan",    &["white", "blue", "green", "orange", "purple", "pink", "red"]),
 ];
 
 pub trait Animation {
@@ -88,6 +89,52 @@ pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content:
     frame >= 2 && revealed < n && revealed < last_content
 }
 
+/// Shared left-to-right sweep renderer used by sprout, flames, matrix, and scan.
+///
+/// - `cooldown_char`: given (position, frame, &StyledChar), returns the character to display
+///   during cooldown. Return `sc.ch` for animations that show the real character, or an effect
+///   character (flame/matrix glyph) for texture animations.
+/// - `snap_trailing`: if true, characters at or past `last_content` always snap to their real
+///   color immediately (used by flames/matrix to avoid effects on the trailing chevron).
+/// - `render_leading`: renders the leading-edge character into `buf`, given (frame, revealed
+///   index, styled slice, buf). Called only when a leading edge should be shown.
+pub(super) fn render_sweep<F, L>(
+    styled: &[StyledChar],
+    frame: usize,
+    buf: &mut String,
+    cooldown_frames: usize,
+    gradient: &[u8],
+    snap_trailing: bool,
+    cooldown_char: F,
+    render_leading: L,
+) where
+    F: Fn(usize, usize, &StyledChar) -> char,
+    L: Fn(usize, usize, &[StyledChar], &mut String),
+{
+    let n = styled.len();
+    let rev = revealed(frame, n);
+    let lc = last_content(styled);
+    let has_lead = has_leading(frame, rev, n, lc);
+
+    for (i, sc) in styled[..rev].iter().enumerate() {
+        let age = frame.saturating_sub(i + 3);
+        if age >= cooldown_frames || (snap_trailing && i >= lc) {
+            buf.push_str("\x1b[0m");
+            buf.push_str(&sc.color_prefix);
+            buf.push(sc.ch);
+        } else {
+            color256(buf, cooldown_color(age, cooldown_frames, gradient));
+            buf.push(cooldown_char(i, frame, sc));
+        }
+    }
+
+    if has_lead {
+        render_leading(frame, rev, styled, buf);
+    }
+
+    buf.push_str("\x1b[0m");
+}
+
 pub fn resolve(name: &str, color: Option<&str>) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
@@ -102,7 +149,10 @@ pub fn resolve(name: &str, color: Option<&str>) -> Option<Box<dyn Animation>> {
             let gradient = matrix::gradient_for(color)?;
             Some(Box::new(matrix::Matrix { gradient }))
         }
-        "scan"      if color.is_none() => Some(Box::new(scan::Scan)),
+        "scan" => {
+            let gradient = scan::gradient_for(color)?;
+            Some(Box::new(scan::Scan { gradient }))
+        }
         "lightning" if color.is_none() => Some(Box::new(lightning::Lightning)),
         _ => None,
     }

@@ -1,14 +1,16 @@
 use std::fmt::Write;
+use std::rc::Rc;
 
 pub struct StyledChar {
     pub ch: char,
-    pub color_prefix: String,
+    pub color_prefix: Rc<str>,
 }
 
 /// Parse ANSI-colored text into visible characters with their associated color sequences.
 pub fn parse_styled(input: &str) -> Vec<StyledChar> {
     let mut result = Vec::with_capacity(input.len());
     let mut current_color = String::new();
+    let mut shared: Rc<str> = Rc::from("");
     let mut chars = input.chars().peekable();
 
     while let Some(ch) = chars.next() {
@@ -33,6 +35,7 @@ pub fn parse_styled(input: &str) -> Vec<StyledChar> {
                         } else {
                             current_color.push_str(&seq);
                         }
+                        shared = Rc::from(current_color.as_str());
                     }
                     // Non-SGR CSI sequences are stripped
                 }
@@ -40,7 +43,7 @@ pub fn parse_styled(input: &str) -> Vec<StyledChar> {
         } else if !ch.is_control() || ch == '\t' {
             result.push(StyledChar {
                 ch,
-                color_prefix: current_color.clone(),
+                color_prefix: Rc::clone(&shared),
             });
         }
     }
@@ -69,7 +72,7 @@ mod tests {
         let styled = parse_styled("\x1b[36mhello\x1b[0m world");
         assert_eq!(styled.len(), 11); // "hello world"
         assert_eq!(styled[0].ch, 'h');
-        assert_eq!(styled[0].color_prefix, "\x1b[36m");
+        assert_eq!(&*styled[0].color_prefix, "\x1b[36m");
         assert_eq!(styled[5].ch, ' ');
         assert!(styled[5].color_prefix.is_empty()); // after reset
     }
@@ -78,7 +81,7 @@ mod tests {
     fn parse_stacked_colors() {
         let styled = parse_styled("\x1b[1m\x1b[36mhi\x1b[0m");
         assert_eq!(styled.len(), 2);
-        assert_eq!(styled[0].color_prefix, "\x1b[1m\x1b[36m");
+        assert_eq!(&*styled[0].color_prefix, "\x1b[1m\x1b[36m");
     }
 
     #[test]
@@ -93,5 +96,14 @@ mod tests {
         let styled = parse_styled("\x1b[Hhello");
         assert_eq!(styled.len(), 5);
         assert!(styled[0].color_prefix.is_empty());
+    }
+
+    #[test]
+    fn consecutive_chars_share_rc() {
+        let styled = parse_styled("\x1b[36mhello");
+        assert_eq!(styled.len(), 5);
+        // All 5 chars should share the same Rc allocation
+        assert!(Rc::ptr_eq(&styled[0].color_prefix, &styled[1].color_prefix));
+        assert!(Rc::ptr_eq(&styled[0].color_prefix, &styled[4].color_prefix));
     }
 }

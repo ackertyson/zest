@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Core Principles
+
+1. **Ultra-fast startup** — Every millisecond of latency before the animation begins is felt on every prompt draw. Minimize dependencies, pre-allocate buffers, and optimize CPU/memory on the hot path. Animation *duration* is a deliberate aesthetic choice (balancing speed with visual impact), not a performance target — don't shorten animations to "go faster."
+2. **Effortless fish/zsh integration** — Pipe to `zest` and go. Existing prompt configs need minimal adjustment.
+3. **Elegant, streamlined, idiomatic Rust** — Clean trait-based architecture, minimal deps, no unnecessary abstractions.
+4. **Flexible composability** — Animation patterns and color gradients mix freely. Exceptions (like Lightning's fixed color scheme) are intentional design choices, not limitations.
+
 ## Commands
 
 ```bash
@@ -103,7 +110,7 @@ Available animations (`zest ANIMATION [COLOR]`):
 | `sprout` | Cooling gradient sweep (default) | `green` (default), `orange`, `blue`, `purple`, `pink` |
 | `flames` | Fire sweep with flickering dot-matrix characters | `orange` (default), `blue`, `green`, `purple`, `pink` |
 | `matrix` | Random ASCII decodes into correct chars | `green` (default), `blue`, `red`, `orange`, `purple`, `pink` |
-| `scan` | CRT phosphor sweep, brief white afterglow | — |
+| `scan` | CRT phosphor sweep, brief white afterglow | `white` (default), `blue`, `green`, `orange`, `purple`, `pink`, `red` |
 | `lightning` | Instant reveal with bright yellow flash band sweeping left-to-right | — |
 
 ### Sprout animation (`anim/sprout.rs`)

@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::style::{color256, StyledChar};
+use crate::style::StyledChar;
 
 use super::Animation;
 use super::{GRADIENT_ORANGE, GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_PURPLE, GRADIENT_PINK};
@@ -27,32 +27,15 @@ impl Animation for Sprout {
     fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
-        let n = styled.len();
-        let revealed = super::revealed(frame, n);
-        // Don't draw the spinner on trailing whitespace or the final non-space character
-        // (e.g. the chevron ❯). Find the index of the last non-whitespace char and stop before it.
-        let last_content = super::last_content(styled);
-        let has_spinner = super::has_leading(frame, revealed, n, last_content);
-
-        // Revealed text: each char cools from HOT→target based on frames since it was revealed.
-        for (i, sc) in styled[..revealed].iter().enumerate() {
-            let age = frame.saturating_sub(i + 3);
-            if age >= COOLDOWN_FRAMES {
-                // Fully cooled: snap to the character's real color
-                buf.push_str("\x1b[0m");
-                buf.push_str(&sc.color_prefix);
-            } else {
-                color256(buf, super::cooldown_color(age, COOLDOWN_FRAMES, self.gradient));
-            }
-            buf.push(sc.ch);
-        }
-
-        // Spinner: bright white
-        if has_spinner {
-            write!(buf, "\x1b[97m{}", SPINNERS[(frame - 2) % SPINNERS.len()]).unwrap();
-        }
-
-        buf.push_str("\x1b[0m");
+        super::render_sweep(
+            styled, frame, buf,
+            COOLDOWN_FRAMES, self.gradient,
+            false,
+            |_pos, _frame, sc| sc.ch,
+            |frame, _revealed, _styled, buf| {
+                write!(buf, "\x1b[97m{}", SPINNERS[(frame - 2) % SPINNERS.len()]).unwrap();
+            },
+        );
     }
 }
 
