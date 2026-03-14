@@ -56,17 +56,4 @@ If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-
 
 ## Animations
 
-Pass the animation name as the first argument, and an optional color as the second.
-
-| Name          | Description                                                   | Colors                                                        |
-|---------------|---------------------------------------------------------------|---------------------------------------------------------------|
-| `sprout`      | Characters sweep in with a cooling gradient (default)         | `green` (default), `orange`, `blue`, `purple`, `pink`         |
-| `flames`      | Characters sweep in as flickering dot-matrix fire             | `orange` (default), `blue`, `green`, `purple`, `pink`         |
-| `matrix`      | Random ASCII scrambles decode into real chars                 | `green` (default), `blue`, `red`, `orange`, `purple`, `pink`  |
-| `scan`        | CRT phosphor sweep — real chars appear behind a white glow    |                                                               |
-| `lightning`   | Instant reveal with a bright yellow flash band sweep          |                                                               |
-
-```bash
-zest flames pink
-zest matrix blue
-```
+See `zest help`
