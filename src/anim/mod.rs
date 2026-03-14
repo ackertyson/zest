@@ -6,8 +6,6 @@ mod scan;
 
 use crate::style::StyledChar;
 
-pub use flames::Flames;
-pub use sprout::Sprout;
 
 pub const DEFAULT: &str = "sprout";
 pub const FRAME_DELAY_MS: u64 = 10;
@@ -21,8 +19,9 @@ pub const LIST: &[(&str, &str)] = &[
 ];
 
 pub const COLORS: &[(&str, &[&str])] = &[
-    ("flames", &["orange", "blue", "green", "purple", "pink"]),
-    ("matrix", &["green", "blue", "red", "orange", "purple", "pink"]),
+    ("sprout",  &["green", "orange", "blue", "purple", "pink"]),
+    ("flames",  &["orange", "blue", "green", "purple", "pink"]),
+    ("matrix",  &["green", "blue", "red", "orange", "purple", "pink"]),
 ];
 
 pub trait Animation {
@@ -62,17 +61,20 @@ pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content:
 
 pub fn resolve(name: &str, color: Option<&str>) -> Option<Box<dyn Animation>> {
     match name {
+        "sprout" => {
+            let gradient = sprout::gradient_for(color)?;
+            Some(Box::new(sprout::Sprout { gradient }))
+        }
         "flames" => {
             let gradient = flames::gradient_for(color)?;
-            Some(Box::new(Flames { gradient }))
+            Some(Box::new(flames::Flames { gradient }))
         }
         "matrix" => {
             let gradient = matrix::gradient_for(color)?;
             Some(Box::new(matrix::Matrix { gradient }))
         }
-        "sprout"      if color.is_none() => Some(Box::new(Sprout)),
-        "scan"        if color.is_none() => Some(Box::new(scan::Scan)),
-        "lightning"   if color.is_none() => Some(Box::new(lightning::Lightning)),
+        "scan"      if color.is_none() => Some(Box::new(scan::Scan)),
+        "lightning" if color.is_none() => Some(Box::new(lightning::Lightning)),
         _ => None,
     }
 }

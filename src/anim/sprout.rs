@@ -3,17 +3,25 @@ use std::fmt::Write;
 use crate::style::{color256, StyledChar};
 
 use super::Animation;
+use super::flames::{GRADIENT, GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_PURPLE, GRADIENT_PINK};
 
 const SPINNERS: [char; 4] = ['-', '\\', '|', '/'];
 const COOLDOWN_FRAMES: usize = 12;
 
-// 256-color gradient from hot (bright greenish-white) to resting dark green.
-// Each entry is an ANSI 256-color index; index 0 is freshly revealed, last is fully cooled.
-//   194 = #d7ffd7   157 = #afffaf   120 = #87ff87
-//    83 = #5fff5f    46 = #00ff00    40 = #00d700    34 = #00af00
-const GRADIENT: &[u8] = &[194, 157, 120, 83, 46, 40, 34];
+pub struct Sprout {
+    pub(super) gradient: &'static [u8],
+}
 
-pub struct Sprout;
+pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
+    match color {
+        None | Some("green") => Some(GRADIENT_GREEN),
+        Some("orange")       => Some(GRADIENT),
+        Some("blue")         => Some(GRADIENT_BLUE),
+        Some("purple")       => Some(GRADIENT_PURPLE),
+        Some("pink")         => Some(GRADIENT_PINK),
+        _                    => None,
+    }
+}
 
 impl Animation for Sprout {
     fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
@@ -34,7 +42,7 @@ impl Animation for Sprout {
                 buf.push_str("\x1b[0m");
                 buf.push_str(&sc.color_prefix);
             } else {
-                color256(buf, super::cooldown_color(age, COOLDOWN_FRAMES, GRADIENT));
+                color256(buf, super::cooldown_color(age, COOLDOWN_FRAMES, self.gradient));
             }
             buf.push(sc.ch);
         }
@@ -58,7 +66,7 @@ mod tests {
     fn render_frame_first_frame_empty() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Sprout.render_frame(&styled, 1, &mut buf);
+        Sprout { gradient: GRADIENT_GREEN }.render_frame(&styled, 1, &mut buf);
         // Frame 1: nothing revealed, spinner not yet started
         assert!(!buf.contains('a'));
     }
@@ -67,7 +75,7 @@ mod tests {
     fn render_frame_reveals_chars() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
-        Sprout.render_frame(&styled, 3, &mut buf);
+        Sprout { gradient: GRADIENT_GREEN }.render_frame(&styled, 3, &mut buf);
         // Frame 3: 1 char revealed
         assert!(buf.contains('a'));
     }

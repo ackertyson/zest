@@ -1,5 +1,5 @@
 #!/bin/sh
-# Static gradient swatches for each zest animation
+# Color swatches shared across zest animations
 
 swatch() {
     name=$1; shift
@@ -24,17 +24,11 @@ lightning_swatch() {
     printf '\033[0m\n'
 }
 
-swatch "sprout"         194 157 120  83  46  40  34
-swatch "flames"         226 220 214 208 202 196 160  88
-swatch "flames blue"    231 195 159 123  87  51  45  39  33  27  21  18  17
-swatch "flames green"   157 120  83  46  40  34  28  22
-swatch "flames purple"  219 213 207 201 165 129  93  57  55
-swatch "flames pink"    198 198 198 198 198 198
-swatch "matrix"         118  82  46  40  34  28
-swatch "matrix blue"    231 195 159 123  87  51  45  39  33  27  21  18  17
-swatch "matrix red"     196 160 124  88  52
-swatch "matrix orange"  226 220 214 208 202 196 160  88
-swatch "matrix purple"  219 213 207 201 165 129  93  57  55
-swatch "matrix pink"    198 198 198 198 198 198
-swatch "scan"           231 195 189 183
+swatch "green"   157 120  83  46  40  34  28  22
+swatch "orange"  226 220 214 208 202 196 160  88
+swatch "blue"    231 195 159 123  87  51  45  39  33  27  21  18  17
+swatch "purple"  219 213 207 201 165 129  93  57  55
+swatch "pink"    198 198 198 198 198 198
+swatch "red"     196 160 124  88  52
+swatch "scan"    231 195 189 183
 lightning_swatch

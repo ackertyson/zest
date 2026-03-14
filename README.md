@@ -60,7 +60,7 @@ Pass the animation name as the first argument, and an optional color as the seco
 
 | Name          | Description                                                   | Colors                                                        |
 |---------------|---------------------------------------------------------------|---------------------------------------------------------------|
-| `sprout`      | Characters sweep in with a green cooling gradient (default)   |                                                               |
+| `sprout`      | Characters sweep in with a cooling gradient (default)         | `green` (default), `orange`, `blue`, `purple`, `pink`         |
 | `flames`      | Characters sweep in as flickering dot-matrix fire             | `orange` (default), `blue`, `green`, `purple`, `pink`         |
 | `matrix`      | Random ASCII scrambles decode into real chars                 | `green` (default), `blue`, `red`, `orange`, `purple`, `pink`  |
 | `scan`        | CRT phosphor sweep — real chars appear behind a white glow    |                                                               |

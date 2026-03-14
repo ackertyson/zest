@@ -14,25 +14,25 @@ const FLAME_CHARS: &[char] = &[
 // 256-color gradient: bright orange-yellow → orange → red-orange → red → dark red
 //   226=#ffff00  220=#ffd700  214=#ffaf00  208=#ff8700
 //   202=#ff5f00  196=#ff0000  160=#d70000   88=#870000
-pub(super) const GRADIENT: &[u8] = &[226, 220, 214, 208, 202, 196, 160, 88];
+pub const GRADIENT: &[u8] = &[226, 220, 214, 208, 202, 196, 160, 88];
 
 // white-blue → cyan → sky-blue → blue → dark navy
 //   231=#ffffff  195=#d7ffff  159=#afffff  123=#87ffff   87=#5fffff   51=#00ffff
 //    45=#00d7ff   39=#00afff   33=#0087ff   27=#005fff   21=#0000ff   18=#000087   17=#00005f
-pub(super) const GRADIENT_BLUE: &[u8] = &[231, 195, 159, 123, 87, 51, 45, 39, 33, 27, 21, 18, 17];
+pub const GRADIENT_BLUE: &[u8] = &[231, 195, 159, 123, 87, 51, 45, 39, 33, 27, 21, 18, 17];
 
 // bright green → green → dark green
 //   157=#afffaf  120=#87ff87   83=#5fff5f   46=#00ff00
 //    40=#00d700   34=#00af00   28=#008700   22=#005f00
-pub(super) const GRADIENT_GREEN: &[u8] = &[157, 120, 83, 46, 40, 34, 28, 22];
+pub const GRADIENT_GREEN: &[u8] = &[157, 120, 83, 46, 40, 34, 28, 22];
 
 // pink/magenta → purple → dark purple
 //   219=#ffafff  213=#ff87ff  207=#ff5fff  201=#ff00ff
 //   165=#d700ff  129=#af00ff   93=#8700ff   57=#5f00ff   55=#5f00af
-pub(super) const GRADIENT_PURPLE: &[u8] = &[219, 213, 207, 201, 165, 129, 93, 57, 55];
+pub const GRADIENT_PURPLE: &[u8] = &[219, 213, 207, 201, 165, 129, 93, 57, 55];
 
 // solid hot pink — single color, no gradient: 198=#ff0087
-pub(super) const GRADIENT_PINK: &[u8] = &[198];
+pub const GRADIENT_PINK: &[u8] = &[198];
 
 pub struct Flames {
     pub(super) gradient: &'static [u8],

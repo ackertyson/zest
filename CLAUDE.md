@@ -89,7 +89,7 @@ Available animations (`zest ANIMATION [COLOR]`):
 
 | Name | Description | Colors |
 |---|---|---|
-| `sprout` | Green cooling gradient sweep (default) | — |
+| `sprout` | Cooling gradient sweep (default) | `green` (default), `orange`, `blue`, `purple`, `pink` |
 | `flames` | Fire sweep with flickering dot-matrix characters | `orange` (default), `blue`, `green`, `purple`, `pink` |
 | `matrix` | Random ASCII decodes into correct chars | `green` (default), `blue`, `red`, `orange`, `purple`, `pink` |
 | `scan` | CRT phosphor sweep, brief white afterglow | — |
@@ -100,18 +100,22 @@ Available animations (`zest ANIMATION [COLOR]`):
 Characters sweep in from the left, one per frame, starting at frame 2. A single **spinner character** (`-\|/` cycling) advances rightward one position per frame, acting as the leading edge.
 
 Characters behind the spinner "cool down" over `COOLDOWN_FRAMES` frames:
-- **Cooling phase** (age < COOLDOWN_FRAMES): green gradient from bright greenish-white to dark green
+- **Cooling phase** (age < COOLDOWN_FRAMES): gradient from hot color to dark, using the selected color variant
 - **Fully cooled** (age >= COOLDOWN_FRAMES): snaps to the character's **actual prompt color** from the original ANSI input
 
 After the animation loop, the **exact original input** is written as the final frame (pixel-perfect reproduction).
 
-Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `GRADIENT` constant defines discrete steps from hot (index 194, `#d7ffd7`) to dark green (index 34, `#00af00`). The spinner uses standard 16-color bright white (`\x1b[97m`). Final resting colors come from the original prompt's ANSI sequences.
+Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `gradient_for(color)` function maps an optional color name to the appropriate gradient constant (shared with `flames.rs`). The spinner uses standard 16-color bright white (`\x1b[97m`). Final resting colors come from the original prompt's ANSI sequences.
 
 | Constant | Purpose |
 |---|---|
 | `FRAME_DELAY_MS` | Speed of animation |
-| `COOLDOWN_FRAMES` | Length of the green wake behind the spinner |
-| `GRADIENT` | 256-color indices from hot to rest |
+| `COOLDOWN_FRAMES` | Length of the wake behind the spinner |
+| `flames::GRADIENT_GREEN` | Default: bright green → dark green |
+| `flames::GRADIENT` | Orange: `#ffff00` → `#870000` |
+| `flames::GRADIENT_BLUE` | White-blue → dark navy |
+| `flames::GRADIENT_PURPLE` | Pink-magenta → dark violet |
+| `flames::GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
 
 ### Flames animation (`anim/flames.rs`)
 
