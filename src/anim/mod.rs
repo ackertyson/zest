@@ -1,5 +1,5 @@
 mod flames;
-mod green_flash;
+mod sprout;
 mod lightning;
 mod matrix;
 mod scan;
@@ -7,21 +7,22 @@ mod scan;
 use crate::style::StyledChar;
 
 pub use flames::Flames;
-pub use green_flash::GreenFlash;
+pub use sprout::Sprout;
 
-pub const DEFAULT: &str = "green-flash";
+pub const DEFAULT: &str = "sprout";
 pub const FRAME_DELAY_MS: u64 = 10;
 
 pub const LIST: &[(&str, &str)] = &[
-    ("green-flash", "Green cooling gradient sweep"),
-    ("flames", "Orange-to-red fire sweep with flickering dot-matrix characters"),
-    ("flames-blue", "Blue fire sweep with flickering dot-matrix characters"),
-    ("flames-green", "Green fire sweep with flickering dot-matrix characters"),
-    ("flames-purple", "Purple fire sweep with flickering dot-matrix characters"),
-    ("flames-pink", "Hot pink/magenta fire sweep with flickering dot-matrix characters"),
-    ("matrix", "Random ASCII decodes into correct chars, green gradient"),
-    ("scan", "CRT phosphor sweep, brief white afterglow"),
-    ("lightning", "Instant reveal with bright yellow flash band sweep"),
+    ("sprout",  "Green cooling gradient sweep"),
+    ("flames",      "Fire sweep with flickering dot-matrix characters"),
+    ("matrix",      "Random ASCII decodes into correct chars"),
+    ("scan",        "CRT phosphor sweep, brief white afterglow"),
+    ("lightning",   "Instant reveal with bright yellow flash band sweep"),
+];
+
+pub const COLORS: &[(&str, &[&str])] = &[
+    ("flames", &["orange", "blue", "green", "purple", "pink"]),
+    ("matrix", &["green", "blue", "red", "orange", "purple", "pink"]),
 ];
 
 pub trait Animation {
@@ -59,17 +60,19 @@ pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content:
     frame >= 2 && revealed < n && revealed < last_content
 }
 
-pub fn resolve(name: &str) -> Option<Box<dyn Animation>> {
+pub fn resolve(name: &str, color: Option<&str>) -> Option<Box<dyn Animation>> {
     match name {
-        "flames"        => Some(Box::new(Flames { gradient: flames::GRADIENT })),
-        "flames-blue"   => Some(Box::new(Flames { gradient: flames::GRADIENT_BLUE })),
-        "flames-green"  => Some(Box::new(Flames { gradient: flames::GRADIENT_GREEN })),
-        "flames-purple" => Some(Box::new(Flames { gradient: flames::GRADIENT_PURPLE })),
-        "flames-pink"   => Some(Box::new(Flames { gradient: flames::GRADIENT_PINK })),
-        "green-flash"   => Some(Box::new(GreenFlash)),
-        "matrix"        => Some(Box::new(matrix::Matrix)),
-        "scan"          => Some(Box::new(scan::Scan)),
-        "lightning"     => Some(Box::new(lightning::Lightning)),
+        "flames" => {
+            let gradient = flames::gradient_for(color)?;
+            Some(Box::new(Flames { gradient }))
+        }
+        "matrix" => {
+            let gradient = matrix::gradient_for(color)?;
+            Some(Box::new(matrix::Matrix { gradient }))
+        }
+        "sprout"      if color.is_none() => Some(Box::new(Sprout)),
+        "scan"        if color.is_none() => Some(Box::new(scan::Scan)),
+        "lightning"   if color.is_none() => Some(Box::new(lightning::Lightning)),
         _ => None,
     }
 }

@@ -29,17 +29,23 @@ fn parse_cli_args() -> CliArgs {
                 zsh = true;
             }
             "-h" | "--help" | "help" => {
-                eprintln!("Usage: zest [OPTIONS] [ANIMATION]");
+                eprintln!("Usage: zest [OPTIONS] [ANIMATION [COLOR]]");
                 eprintln!();
                 eprintln!("Animates a colorized prompt into view.");
-                eprintln!();
-                eprintln!("Arguments:");
-                eprintln!("  [ANIMATION]  Animation to play (default: {})", anim::DEFAULT);
                 eprintln!();
                 eprintln!("Animations:");
                 for (name, desc) in anim::LIST {
                     let marker = if *name == anim::DEFAULT { " (default)" } else { "" };
                     eprintln!("  {:<14}{}{}", name, desc, marker);
+                }
+                eprintln!();
+                eprintln!("Colors:");
+                for (anim_name, colors) in anim::COLORS {
+                    let first = colors[0];
+                    let rest = &colors[1..];
+                    let others: Vec<&str> = rest.to_vec();
+                    eprintln!("  {}: {} (default){}", anim_name, first,
+                        if others.is_empty() { String::new() } else { format!(", {}", others.join(", ")) });
                 }
                 eprintln!();
                 eprintln!("Options:");
@@ -86,15 +92,21 @@ fn main() {
     let stdin = io::stdin();
     let is_piped = !stdin.is_terminal();
 
-    // Resolve animation from first positional arg
+    // Resolve animation from first positional arg, optionally consuming a color second arg
     let (animation, text_args) = if let Some(first) = cli.positional.first() {
-        if let Some(a) = anim::resolve(first) {
+        let maybe_color = cli.positional.get(1).map(String::as_str);
+        if let Some(a) = anim::resolve(first, maybe_color) {
+            let consumed = if maybe_color.is_some() { 2 } else { 1 };
+            (a, &cli.positional[consumed..])
+        } else if let Some(a) = anim::resolve(first, None) {
+            // Valid animation name but unrecognized color — use default color, don't consume second arg
             (a, &cli.positional[1..])
         } else {
-            (anim::resolve(anim::DEFAULT).unwrap(), cli.positional.as_slice())
+            // Unknown animation name — treat all positionals as text
+            (anim::resolve(anim::DEFAULT, None).unwrap(), cli.positional.as_slice())
         }
     } else {
-        (anim::resolve(anim::DEFAULT).unwrap(), cli.positional.as_slice())
+        (anim::resolve(anim::DEFAULT, None).unwrap(), cli.positional.as_slice())
     };
 
     let raw_input = if is_piped {

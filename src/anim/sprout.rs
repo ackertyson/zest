@@ -13,9 +13,9 @@ const COOLDOWN_FRAMES: usize = 12;
 //    83 = #5fff5f    46 = #00ff00    40 = #00d700    34 = #00af00
 const GRADIENT: &[u8] = &[194, 157, 120, 83, 46, 40, 34];
 
-pub struct GreenFlash;
+pub struct Sprout;
 
-impl Animation for GreenFlash {
+impl Animation for Sprout {
     fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
@@ -58,7 +58,7 @@ mod tests {
     fn render_frame_first_frame_empty() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        GreenFlash.render_frame(&styled, 1, &mut buf);
+        Sprout.render_frame(&styled, 1, &mut buf);
         // Frame 1: nothing revealed, spinner not yet started
         assert!(!buf.contains('a'));
     }
@@ -67,7 +67,7 @@ mod tests {
     fn render_frame_reveals_chars() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
-        GreenFlash.render_frame(&styled, 3, &mut buf);
+        Sprout.render_frame(&styled, 3, &mut buf);
         // Frame 3: 1 char revealed
         assert!(buf.contains('a'));
     }

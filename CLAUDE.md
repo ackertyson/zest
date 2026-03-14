@@ -13,7 +13,11 @@ cargo test              # run tests
 printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run
 
 # Select animation explicitly
-printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- green-flash
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- sprout
+
+# Select animation with color
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- flames pink
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- matrix blue
 
 # Plain text fallback (no pipe)
 cargo run -- "hello world"
@@ -35,8 +39,8 @@ src/
   shell.rs             -- wrap_ansi_for_zsh(), is_zsh() (shell-specific logic)
   anim/
     mod.rs             -- Animation trait, resolve() dispatch, cooldown_color(), DEFAULT const
-    green_flash.rs     -- "green-flash" animation (default)
-    flames.rs          -- "flames" / "flames-blue" / "flames-green" / "flames-purple" animations
+    sprout.rs          -- "sprout" animation (default)
+    flames.rs          -- "flames" animation with color variants (orange/blue/green/purple/pink)
     matrix.rs          -- "matrix" animation
     scan.rs            -- "scan" animation
     lightning.rs       -- "lightning" animation
@@ -44,10 +48,10 @@ src/
 
 ### CLI
 
-- `zest [ANIMATION]` — optional positional arg selects animation (default: `green-flash`)
+- `zest [ANIMATION [COLOR]]` — optional positional args select animation and color variant (default: `sprout`)
 - `--zsh` — wrap ANSI codes for zsh prompt width
 - `-h` / `--help` — print usage
-- Unknown first args are treated as fallback text, not animation names
+- Unknown animation names are treated as fallback text; unrecognized colors fall back to the animation's default color
 
 ### Input handling
 
@@ -81,21 +85,17 @@ No changes to `main.rs` or other animation files.
 
 ### Animations
 
-Available animations (pass as first positional arg):
+Available animations (`zest ANIMATION [COLOR]`):
 
-| Name | Description |
-|---|---|
-| `green-flash` | Green cooling gradient sweep (default) |
-| `flames` | Orange-to-red fire sweep with flickering dot-matrix characters |
-| `flames-blue` | Blue fire sweep with flickering dot-matrix characters |
-| `flames-green` | Green fire sweep with flickering dot-matrix characters |
-| `flames-purple` | Purple fire sweep with flickering dot-matrix characters |
-| `flames-pink` | Hot pink/magenta fire sweep with flickering dot-matrix characters |
-| `matrix` | Random ASCII decodes into correct chars, green gradient |
-| `scan` | CRT phosphor sweep, brief white afterglow |
-| `lightning` | Instant reveal with bright yellow flash band sweeping left-to-right |
+| Name | Description | Colors |
+|---|---|---|
+| `sprout` | Green cooling gradient sweep (default) | — |
+| `flames` | Fire sweep with flickering dot-matrix characters | `orange` (default), `blue`, `green`, `purple`, `pink` |
+| `matrix` | Random ASCII decodes into correct chars | `green` (default), `blue`, `red`, `orange`, `purple`, `pink` |
+| `scan` | CRT phosphor sweep, brief white afterglow | — |
+| `lightning` | Instant reveal with bright yellow flash band sweeping left-to-right | — |
 
-### Green-flash animation (`anim/green_flash.rs`)
+### Sprout animation (`anim/sprout.rs`)
 
 Characters sweep in from the left, one per frame, starting at frame 2. A single **spinner character** (`-\|/` cycling) advances rightward one position per frame, acting as the leading edge.
 
@@ -117,14 +117,37 @@ Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `GRA
 
 Characters sweep in from the left, one per frame, starting at frame 2. The leading edge and cooling characters are rendered as Braille/block dot-matrix chars (`FLAME_CHARS`) chosen deterministically by position and frame via a splitmix64-style hash, giving a flickering fire texture.
 
-Characters cool down over `COOLDOWN_FRAMES` frames through an orange-yellow → red gradient using ANSI 256-color mode. Once fully cooled, each character snaps to its actual prompt color.
+Characters cool down over `COOLDOWN_FRAMES` frames through the selected color gradient using ANSI 256-color mode. Once fully cooled, each character snaps to its actual prompt color.
+
+The `gradient_for(color)` function maps an optional color name to the appropriate `GRADIENT_*` constant. `Flames` holds the resolved gradient as a field.
 
 | Constant | Purpose |
 |---|---|
 | `FRAME_DELAY_MS` | Speed of animation |
 | `COOLDOWN_FRAMES` | Length of the fire wake behind the leading edge |
-| `GRADIENT` | 256-color indices from hot (`#ffff00`) to dark red (`#870000`) |
+| `GRADIENT` | Orange default: `#ffff00` → `#870000` |
+| `GRADIENT_BLUE` | White-blue → dark navy |
+| `GRADIENT_GREEN` | Bright green → dark green |
+| `GRADIENT_PURPLE` | Pink-magenta → dark violet |
+| `GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
 | `FLAME_CHARS` | Braille/block chars used during the fire phase |
+
+### Matrix animation (`anim/matrix.rs`)
+
+Characters sweep in from the left, one per frame, starting at frame 2. During cooldown, each position shows a random ASCII character chosen via splitmix64-style hash. Once fully cooled, characters snap to their actual prompt color.
+
+`Matrix` holds a gradient field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate `GRADIENT_*` constant.
+
+| Constant | Purpose |
+|---|---|
+| `COOLDOWN_FRAMES` | Length of the scramble wake |
+| `GRADIENT` | Green default: `#87ff00` → `#008700` |
+| `GRADIENT_BLUE` | White-blue → dark navy |
+| `GRADIENT_RED` | Bright red → dark red |
+| `GRADIENT_ORANGE` | Orange-yellow → dark red |
+| `GRADIENT_PURPLE` | Pink-magenta → dark violet |
+| `GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
+| `MATRIX_CHARS` | ASCII characters used during the scramble phase |
 
 ### Lightning animation (`anim/lightning.rs`)
 

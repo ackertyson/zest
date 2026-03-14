@@ -56,13 +56,17 @@ If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-
 
 ## Animations
 
-| Name            | Description                                                                           |
-|-----------------|---------------------------------------------------------------------------------------|
-| `green-flash`   | Characters sweep in with a green cooling gradient (default)                           |
-| `flames`        | Characters sweep in as flickering dot-matrix fire, cooling from orange-yellow to red  |
-| `flames-blue`   | Blue fire sweep, cooling from white-blue through cyan to dark navy                    |
-| `flames-green`  | Green fire sweep, cooling from bright green to dark green                             |
-| `flames-purple` | Purple fire sweep, cooling from pink-magenta through purple to dark violet            |
-| `matrix`        | Random ASCII scrambles decode into real chars through a bright-to-dark green gradient |
-| `scan`          | CRT phosphor sweep — real chars appear behind a brief white afterglow                 |
-| `lightning`     | Instant reveal with a bright yellow flash band sweep                                  |
+Pass the animation name as the first argument, and an optional color as the second.
+
+| Name          | Description                                                   | Colors                                                        |
+|---------------|---------------------------------------------------------------|---------------------------------------------------------------|
+| `sprout`      | Characters sweep in with a green cooling gradient (default)   |                                                               |
+| `flames`      | Characters sweep in as flickering dot-matrix fire             | `orange` (default), `blue`, `green`, `purple`, `pink`         |
+| `matrix`      | Random ASCII scrambles decode into real chars                 | `green` (default), `blue`, `red`, `orange`, `purple`, `pink`  |
+| `scan`        | CRT phosphor sweep — real chars appear behind a white glow    |                                                               |
+| `lightning`   | Instant reveal with a bright yellow flash band sweep          |                                                               |
+
+```bash
+zest flames pink
+zest matrix blue
+```

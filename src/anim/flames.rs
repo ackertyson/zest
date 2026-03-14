@@ -38,6 +38,17 @@ pub struct Flames {
     pub(super) gradient: &'static [u8],
 }
 
+pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
+    match color {
+        None | Some("orange") => Some(GRADIENT),
+        Some("blue")          => Some(GRADIENT_BLUE),
+        Some("green")         => Some(GRADIENT_GREEN),
+        Some("purple")        => Some(GRADIENT_PURPLE),
+        Some("pink")          => Some(GRADIENT_PINK),
+        _                     => None,
+    }
+}
+
 fn flame_char(pos: usize, frame: usize) -> char {
     FLAME_CHARS[super::hash(pos, frame) % FLAME_CHARS.len()]
 }
