@@ -3,7 +3,7 @@ use std::fmt::Write;
 use crate::style::{color256, StyledChar};
 
 use super::Animation;
-use super::flames::{GRADIENT, GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_PURPLE, GRADIENT_PINK};
+use super::{GRADIENT_ORANGE, GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_PURPLE, GRADIENT_PINK};
 
 const SPINNERS: [char; 4] = ['-', '\\', '|', '/'];
 const COOLDOWN_FRAMES: usize = 12;
@@ -15,7 +15,7 @@ pub struct Sprout {
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
     match color {
         None | Some("green") => Some(GRADIENT_GREEN),
-        Some("orange")       => Some(GRADIENT),
+        Some("orange")       => Some(GRADIENT_ORANGE),
         Some("blue")         => Some(GRADIENT_BLUE),
         Some("purple")       => Some(GRADIENT_PURPLE),
         Some("pink")         => Some(GRADIENT_PINK),

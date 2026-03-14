@@ -38,7 +38,7 @@ src/
   style.rs             -- StyledChar, parse_styled(), color256() (shared infra)
   shell.rs             -- wrap_ansi_for_zsh(), is_zsh() (shell-specific logic)
   anim/
-    mod.rs             -- Animation trait, resolve() dispatch, cooldown_color(), DEFAULT const
+    mod.rs             -- Animation trait, resolve() dispatch, cooldown_color(), shared GRADIENT_* constants
     sprout.rs          -- "sprout" animation (default)
     flames.rs          -- "flames" animation with color variants (orange/blue/green/purple/pink)
     matrix.rs          -- "matrix" animation
@@ -75,6 +75,17 @@ pub trait Animation {
 
 `main` owns the frame loop and calls into the trait. The loop clears `buf` before each `render_frame` call; animations only append. A shared `cooldown_color(age, cooldown_frames, gradient)` helper in `anim/mod.rs` maps cooldown age to a 256-color index.
 
+Shared 256-color gradients live in `anim/mod.rs` and are used by sprout, flames, and matrix via their per-module `gradient_for()` functions:
+
+| Constant | Description |
+|---|---|
+| `GRADIENT_ORANGE` | `#ffff00` → `#870000` (flames default) |
+| `GRADIENT_BLUE` | White-blue → dark navy |
+| `GRADIENT_GREEN` | Bright green → dark green (sprout default) |
+| `GRADIENT_PURPLE` | Pink-magenta → dark violet |
+| `GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
+| `GRADIENT_RED` | Bright red → dark red |
+
 ### Adding a new animation
 
 1. Create `src/anim/foo.rs` with struct implementing `Animation`
@@ -105,17 +116,12 @@ Characters behind the spinner "cool down" over `COOLDOWN_FRAMES` frames:
 
 After the animation loop, the **exact original input** is written as the final frame (pixel-perfect reproduction).
 
-Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `gradient_for(color)` function maps an optional color name to the appropriate gradient constant (shared with `flames.rs`). The spinner uses standard 16-color bright white (`\x1b[97m`). Final resting colors come from the original prompt's ANSI sequences.
+Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `gradient_for(color)` function maps an optional color name to the appropriate shared gradient constant from `anim/mod.rs`. The spinner uses standard 16-color bright white (`\x1b[97m`). Final resting colors come from the original prompt's ANSI sequences.
 
 | Constant | Purpose |
 |---|---|
 | `FRAME_DELAY_MS` | Speed of animation |
 | `COOLDOWN_FRAMES` | Length of the wake behind the spinner |
-| `flames::GRADIENT_GREEN` | Default: bright green → dark green |
-| `flames::GRADIENT` | Orange: `#ffff00` → `#870000` |
-| `flames::GRADIENT_BLUE` | White-blue → dark navy |
-| `flames::GRADIENT_PURPLE` | Pink-magenta → dark violet |
-| `flames::GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
 
 ### Flames animation (`anim/flames.rs`)
 
@@ -123,34 +129,24 @@ Characters sweep in from the left, one per frame, starting at frame 2. The leadi
 
 Characters cool down over `COOLDOWN_FRAMES` frames through the selected color gradient using ANSI 256-color mode. Once fully cooled, each character snaps to its actual prompt color.
 
-The `gradient_for(color)` function maps an optional color name to the appropriate `GRADIENT_*` constant. `Flames` holds the resolved gradient as a field.
+The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`. `Flames` holds the resolved gradient as a field.
 
 | Constant | Purpose |
 |---|---|
 | `FRAME_DELAY_MS` | Speed of animation |
 | `COOLDOWN_FRAMES` | Length of the fire wake behind the leading edge |
-| `GRADIENT` | Orange default: `#ffff00` → `#870000` |
-| `GRADIENT_BLUE` | White-blue → dark navy |
-| `GRADIENT_GREEN` | Bright green → dark green |
-| `GRADIENT_PURPLE` | Pink-magenta → dark violet |
-| `GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
 | `FLAME_CHARS` | Braille/block chars used during the fire phase |
 
 ### Matrix animation (`anim/matrix.rs`)
 
 Characters sweep in from the left, one per frame, starting at frame 2. During cooldown, each position shows a random ASCII character chosen via splitmix64-style hash. Once fully cooled, characters snap to their actual prompt color.
 
-`Matrix` holds a gradient field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate `GRADIENT_*` constant.
+`Matrix` holds a gradient field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`, except for the default green which uses a local `GRADIENT` with different values.
 
 | Constant | Purpose |
 |---|---|
 | `COOLDOWN_FRAMES` | Length of the scramble wake |
-| `GRADIENT` | Green default: `#87ff00` → `#008700` |
-| `GRADIENT_BLUE` | White-blue → dark navy |
-| `GRADIENT_RED` | Bright red → dark red |
-| `GRADIENT_ORANGE` | Orange-yellow → dark red |
-| `GRADIENT_PURPLE` | Pink-magenta → dark violet |
-| `GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
+| `GRADIENT` | Matrix-specific green default: `#87ff00` → `#008700` |
 | `MATRIX_CHARS` | ASCII characters used during the scramble phase |
 
 ### Lightning animation (`anim/lightning.rs`)

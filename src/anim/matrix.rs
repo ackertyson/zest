@@ -1,30 +1,16 @@
 use crate::style::{color256, StyledChar};
 
 use super::Animation;
+use super::{GRADIENT_BLUE, GRADIENT_ORANGE, GRADIENT_PURPLE, GRADIENT_PINK, GRADIENT_RED};
 
 const COOLDOWN_FRAMES: usize = 12;
 
 const MATRIX_CHARS: &[u8] =
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*+=<>?/";
 
-// 256-color gradient: bright green → dark green
+// Matrix-specific green: brighter starting point than the shared green
 //   118=#87ff00   82=#5fff00   46=#00ff00   40=#00d700   34=#00af00   28=#008700
-pub(super) const GRADIENT: &[u8] = &[118, 82, 46, 40, 34, 28];
-
-// white-blue → cyan → sky-blue → blue → dark navy
-pub(super) const GRADIENT_BLUE: &[u8] = &[231, 195, 159, 123, 87, 51, 45, 39, 33, 27, 21, 18, 17];
-
-// bright red → dark red
-pub(super) const GRADIENT_RED: &[u8] = &[196, 160, 124, 88, 52];
-
-// bright orange-yellow → orange → red-orange → red → dark red
-pub(super) const GRADIENT_ORANGE: &[u8] = &[226, 220, 214, 208, 202, 196, 160, 88];
-
-// pink/magenta → purple → dark purple
-pub(super) const GRADIENT_PURPLE: &[u8] = &[219, 213, 207, 201, 165, 129, 93, 57, 55];
-
-// solid hot pink — single color: 198=#ff0087
-pub(super) const GRADIENT_PINK: &[u8] = &[198];
+const GRADIENT: &[u8] = &[118, 82, 46, 40, 34, 28];
 
 pub struct Matrix {
     pub(super) gradient: &'static [u8],
