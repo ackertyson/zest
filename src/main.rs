@@ -152,8 +152,10 @@ fn main() {
                 tty.flush().unwrap();
                 thread::sleep(Duration::from_millis(frame_delay));
             }
-            // Clear animation line before final output
-            write!(tty, "\r\x1b[K").unwrap();
+            // Return cursor to col 0 without erasing — animation's last frame already shows the
+            // final prompt at real colors. The shell then writes stdout from col 0, overwriting
+            // the same content with no blank gap in between.
+            write!(tty, "\r").unwrap();
             write!(tty, "\x1b[?25h").unwrap(); // restore cursor
             tty.flush().unwrap();
         }
