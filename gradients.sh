@@ -10,8 +10,8 @@ swatch() {
     printf '\033[0m\n'
 }
 
-lightning_swatch() {
-    printf '%-15s' "lightning"
+shine_swatch() {
+    printf '%-15s' "shine"
     fgs="231 226 220 214 178"
     bgs="100  58 238 237 236"
     n=5
@@ -31,4 +31,4 @@ swatch "purple"  219 213 207 201 165 129  93  57  55
 swatch "pink"    198 198 198 198 198 198
 swatch "red"     196 160 124  88  52
 swatch "scan"    231 195 189 183
-lightning_swatch
+shine_swatch

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. **Ultra-fast startup** — Every millisecond of latency before the animation begins is felt on every prompt draw. Minimize dependencies, pre-allocate buffers, and optimize CPU/memory on the hot path. Animation *duration* is a deliberate aesthetic choice (balancing speed with visual impact), not a performance target — don't shorten animations to "go faster."
 2. **Effortless fish/zsh integration** — Pipe to `zest` and go. Existing prompt configs need minimal adjustment.
 3. **Elegant, streamlined, idiomatic Rust** — Clean trait-based architecture, minimal deps, no unnecessary abstractions.
-4. **Flexible composability** — Animation patterns and color gradients mix freely. Exceptions (like Lightning's fixed color scheme) are intentional design choices, not limitations.
+4. **Flexible composability** — Animation patterns and color gradients mix freely.
 
 ## Commands
 
@@ -50,7 +50,7 @@ src/
     flames.rs          -- "flames" animation with color variants (orange/blue/green/purple/pink)
     matrix.rs          -- "matrix" animation
     scan.rs            -- "scan" animation
-    lightning.rs       -- "lightning" animation
+    shine.rs       -- "shine" animation
 ```
 
 ### CLI
@@ -111,7 +111,7 @@ Available animations (`zest ANIMATION [COLOR]`):
 | `flames` | Fire sweep with flickering dot-matrix characters | `orange` (default), `blue`, `green`, `purple`, `pink` |
 | `matrix` | Random ASCII decodes into correct chars | `green` (default), `blue`, `red`, `orange`, `purple`, `pink` |
 | `scan` | CRT phosphor sweep, brief white afterglow | `white` (default), `blue`, `green`, `orange`, `purple`, `pink`, `red` |
-| `lightning` | Instant reveal with bright yellow flash band sweeping left-to-right | — |
+| `shine` | Instant reveal with bright flash band sweeping left-to-right | `yellow` (default), `blue`, `green`, `orange`, `purple`, `pink`, `red` |
 
 ### Sprout animation (`anim/sprout.rs`)
 
@@ -156,7 +156,7 @@ Characters sweep in from the left, one per frame, starting at frame 2. During co
 | `GRADIENT` | Matrix-specific green default: `#87ff00` → `#008700` |
 | `MATRIX_CHARS` | ASCII characters used during the scramble phase |
 
-### Lightning animation (`anim/lightning.rs`)
+### Shine animation (`anim/shine.rs`)
 
 The entire prompt is shown at its real colors from frame 1 — no reveal sweep. A **flash band** of 9 characters sweeps left-to-right at half speed (one character position every two frames), giving it a slow, dramatic feel.
 
@@ -177,8 +177,9 @@ Characters outside the band always show their actual prompt color. After the ban
 | Constant | Purpose |
 |---|---|
 | `BAND_HALF` | Half-width of the flash band (4 → 9 chars total) |
-| `FLASH_FG` | Foreground 256-color gradient from center outward |
-| `FLASH_BG` | Background 256-color gradient from center outward |
+| `FLASH_FG` | Default (yellow) foreground 256-color gradient from center outward |
+| `FLASH_BG` | Default (yellow) background 256-color gradient from center outward |
+| `FLASH_FG_*` / `FLASH_BG_*` | Per-color FG/BG band gradient pairs (blue, green, orange, purple, pink, red) |
 
 ### Fish shell integration
 

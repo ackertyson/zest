@@ -1,6 +1,6 @@
 mod flames;
 mod sprout;
-mod lightning;
+mod shine;
 mod matrix;
 mod scan;
 
@@ -15,7 +15,7 @@ pub const LIST: &[(&str, &str)] = &[
     ("flames",      "Fire sweep with flickering dot-matrix characters"),
     ("matrix",      "Random ASCII decodes into correct chars"),
     ("scan",        "CRT phosphor sweep, brief white afterglow"),
-    ("lightning",   "Instant reveal with bright yellow flash band sweep"),
+    ("shine",   "Instant reveal with bright yellow flash band sweep"),
 ];
 
 pub const COLORS: &[(&str, &[&str])] = &[
@@ -23,6 +23,7 @@ pub const COLORS: &[(&str, &[&str])] = &[
     ("flames",  &["orange", "blue", "green", "purple", "pink"]),
     ("matrix",  &["green", "blue", "red", "orange", "purple", "pink"]),
     ("scan",    &["white", "blue", "green", "orange", "purple", "pink", "red"]),
+    ("shine",   &["yellow", "blue", "green", "orange", "purple", "pink", "red"]),
 ];
 
 pub trait Animation {
@@ -153,7 +154,10 @@ pub fn resolve(name: &str, color: Option<&str>) -> Option<Box<dyn Animation>> {
             let gradient = scan::gradient_for(color)?;
             Some(Box::new(scan::Scan { gradient }))
         }
-        "lightning" if color.is_none() => Some(Box::new(lightning::Lightning)),
+        "shine" => {
+            let (flash_fg, flash_bg) = shine::gradient_for(color)?;
+            Some(Box::new(shine::Shine { flash_fg, flash_bg }))
+        }
         _ => None,
     }
 }
