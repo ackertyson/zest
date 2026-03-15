@@ -29,6 +29,9 @@ printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- matrix blu
 # Custom 256-color gradient (overrides named color)
 printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- sprout --gradient 226,220,214,88
 
+# Custom FG + BG gradient (colon-separated)
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- sprout --gradient 226,220:52,88
+
 # Plain text fallback (no pipe)
 cargo run -- "hello world"
 
@@ -59,7 +62,7 @@ src/
 ### CLI
 
 - `zest [ANIMATION [COLOR]]` — optional positional args select animation and color variant (default: `sprout`)
-- `--gradient <c,...>` — comma-separated 256-color indices (0–255) overriding the named-color gradient; bad/empty input silently falls back to default; for `shine`, resized to 5 entries with a neutral dark-grey BG
+- `--gradient <fg[:bg]>` — comma-separated 256-color FG indices with an optional `:bg,...` list for background colors; each side is independent and arbitrary-length; bad/empty sides silently fall back to default
 - `--zsh` — wrap ANSI codes for zsh prompt width
 - `-h` / `--help` — print usage
 - Unknown animation names are treated as fallback text; unrecognized colors fall back to the animation's default color
@@ -127,7 +130,7 @@ Characters behind the spinner "cool down" over `COOLDOWN_FRAMES` frames:
 
 After the animation loop, the **exact original input** is written as the final frame (pixel-perfect reproduction).
 
-Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `gradient_for(color)` function maps an optional color name to the appropriate shared gradient constant from `anim/mod.rs`. The spinner uses standard 16-color bright white (`\x1b[97m`). Final resting colors come from the original prompt's ANSI sequences.
+Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `gradient_for(color)` function maps an optional color name to the appropriate shared gradient constant from `anim/mod.rs`. The spinner uses standard 16-color bright white (`\x1b[97m`). Final resting colors come from the original prompt's ANSI sequences. An optional `bg_gradient` field applies per-character background colors during cooldown, indexed directly by `age` (independent of `COOLDOWN_FRAMES`).
 
 | Constant | Purpose |
 |---|---|
@@ -140,7 +143,7 @@ Characters sweep in from the left, one per frame, starting at frame 2. The leadi
 
 Characters cool down over `COOLDOWN_FRAMES` frames through the selected color gradient using ANSI 256-color mode. Once fully cooled, each character snaps to its actual prompt color.
 
-The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`. `Flames` holds the resolved gradient as a field.
+The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`. `Flames` holds the resolved gradient and an optional `bg_gradient` field; BG colors are applied during cooldown indexed directly by `age`.
 
 | Constant | Purpose |
 |---|---|
@@ -152,7 +155,7 @@ The `gradient_for(color)` function maps an optional color name to the appropriat
 
 Characters sweep in from the left, one per frame, starting at frame 2. During cooldown, each position shows a random ASCII character chosen via splitmix64-style hash. Once fully cooled, characters snap to their actual prompt color.
 
-`Matrix` holds a gradient field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`, except for the default green which uses a local `GRADIENT` with different values.
+`Matrix` holds a gradient field and an optional `bg_gradient` field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`, except for the default green which uses a local `GRADIENT` with different values.
 
 | Constant | Purpose |
 |---|---|
@@ -162,9 +165,11 @@ Characters sweep in from the left, one per frame, starting at frame 2. During co
 
 ### Shine animation (`anim/shine.rs`)
 
-The entire prompt is shown at its real colors from frame 1 — no reveal sweep. A **flash band** of 9 characters sweeps left-to-right at half speed (one character position every two frames), giving it a slow, dramatic feel.
+The entire prompt is shown at its real colors from frame 1 — no reveal sweep. A **flash band** sweeps left-to-right at half speed (one character position every two frames), giving it a slow, dramatic feel.
 
-Each character in the band is rendered with both a foreground and background color based on its distance from the band center:
+Each character in the band is rendered with FG and/or BG color based on its distance from the band center. A character at distance `d` is in the FG band if `d < flash_fg.len()`, and in the BG band if `flash_bg` is Some and `d < flash_bg.len()`. The two are independent and arbitrary-length. Characters outside both bands show their actual prompt color.
+
+The default yellow named-color band is 9 characters wide (distances 0–4):
 
 | Distance | Foreground | Background |
 |---|---|---|
@@ -174,13 +179,11 @@ Each character in the band is rendered with both a foreground and background col
 | 3 | 214 `#ffaf00` orange-gold | 237 `#3a3a3a` darker grey |
 | 4 (edge) | 178 `#d7af00` dark gold | 236 `#303030` near-black |
 
-Characters outside the band always show their actual prompt color. After the band exits the right edge, all characters are at their real colors.
-
-`total_frames` is overridden to `2 * (n + BAND_HALF) + 2` to account for the half-speed movement.
+`flash_bg` is `Option<&'static [u8]>` — `None` means no background (e.g. when a custom FG is given without a custom BG). `total_frames` is overridden to `2 * (n + BAND_HALF) + 2` to account for half-speed movement; `BAND_HALF` is not a gradient-length constraint, only a `total_frames` parameter.
 
 | Constant | Purpose |
 |---|---|
-| `BAND_HALF` | Half-width of the flash band (4 → 9 chars total) |
+| `BAND_HALF` | Used only for `total_frames` calculation (keeps default-sized bands fully visible) |
 | `FLASH_FG` | Default (yellow) foreground 256-color gradient from center outward |
 | `FLASH_BG` | Default (yellow) background 256-color gradient from center outward |
 | `FLASH_FG_*` / `FLASH_BG_*` | Per-color FG/BG band gradient pairs (blue, green, orange, purple, pink, red) |

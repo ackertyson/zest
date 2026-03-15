@@ -20,6 +20,36 @@ struct CliArgs {
     positional: Vec<String>,
 }
 
+/// Parse a `--gradient` value into `(fg, bg)` lists.
+/// Accepts `"fg1,fg2"`, `"fg1,fg2:bg1,bg2"`, or `":bg1,bg2"`.
+/// Returns `None` if both sides are absent or unparseable.
+fn parse_gradient(val: &str) -> Option<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+    let (fg_part, bg_part) = match val.split_once(':') {
+        Some((f, b)) => (f, Some(b)),
+        None         => (val, None),
+    };
+    let parse_list = |s: &str| -> Option<Vec<u8>> {
+        let v: Result<Vec<u8>, _> = s.split(',').map(|x| x.trim().parse::<u8>()).collect();
+        v.ok().filter(|v| !v.is_empty())
+    };
+    let fg = parse_list(fg_part);
+    let bg = bg_part.and_then(parse_list);
+    if fg.is_some() || bg.is_some() { Some((fg, bg)) } else { None }
+}
+
+const DURATION_MIN_MS: u64 = 50;
+const DURATION_MAX_MS: u64 = 10_000;
+
+/// Validate a `--duration` string. Returns `Ok(ms)` or `Err(message)`.
+fn parse_duration(val: &str) -> Result<u64, String> {
+    let ms = val.parse::<u64>()
+        .map_err(|_| format!("error: --duration value must be a positive integer, got {:?}", val))?;
+    if ms < DURATION_MIN_MS || ms > DURATION_MAX_MS {
+        return Err(format!("error: --duration must be between {} and {} ms", DURATION_MIN_MS, DURATION_MAX_MS));
+    }
+    Ok(ms)
+}
+
 fn parse_cli_args() -> CliArgs {
     let mut args = env::args().skip(1);
     let mut zsh = false;
@@ -38,38 +68,15 @@ fn parse_cli_args() -> CliArgs {
                         eprintln!("error: --duration requires a value in milliseconds");
                         std::process::exit(1);
                     }
-                    Some(val) => match val.parse::<u64>() {
-                        Err(_) => {
-                            eprintln!("error: --duration value must be a positive integer, got {:?}", val);
-                            std::process::exit(1);
-                        }
-                        Ok(ms) => {
-                            const MIN_MS: u64 = 50;
-                            const MAX_MS: u64 = 10_000;
-                            if ms < MIN_MS || ms > MAX_MS {
-                                eprintln!("error: --duration must be between {} and {} ms", MIN_MS, MAX_MS);
-                                std::process::exit(1);
-                            }
-                            duration = Some(ms);
-                        }
+                    Some(val) => match parse_duration(&val) {
+                        Ok(ms) => duration = Some(ms),
+                        Err(msg) => { eprintln!("{}", msg); std::process::exit(1); }
                     },
                 }
             }
             "--gradient" => {
                 if let Some(val) = args.next() {
-                    let (fg_part, bg_part) = match val.split_once(':') {
-                        Some((f, b)) => (f, Some(b)),
-                        None         => (val.as_str(), None),
-                    };
-                    let parse_list = |s: &str| -> Option<Vec<u8>> {
-                        let v: Result<Vec<u8>, _> = s.split(',').map(|x| x.trim().parse::<u8>()).collect();
-                        v.ok().filter(|v| !v.is_empty())
-                    };
-                    let fg = parse_list(fg_part);
-                    let bg = bg_part.and_then(parse_list);
-                    if fg.is_some() || bg.is_some() {
-                        gradient = Some((fg, bg));
-                    }
+                    gradient = parse_gradient(&val);
                 }
             }
             "-h" | "--help" | "help" => {
@@ -220,4 +227,120 @@ fn main() {
         write!(out, "{}\x1b[?25h", raw_input).unwrap();
     }
     out.flush().unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── parse_gradient ───────────────────────────────────────────────────────
+
+    #[test]
+    fn gradient_fg_only() {
+        assert_eq!(parse_gradient("226,220,214"), Some((Some(vec![226, 220, 214]), None)));
+    }
+
+    #[test]
+    fn gradient_fg_and_bg() {
+        assert_eq!(parse_gradient("226,220:52,88"), Some((Some(vec![226, 220]), Some(vec![52, 88]))));
+    }
+
+    #[test]
+    fn gradient_bg_only() {
+        assert_eq!(parse_gradient(":52,22,18"), Some((None, Some(vec![52, 22, 18]))));
+    }
+
+    #[test]
+    fn gradient_fg_empty_bg() {
+        // Colon present but BG side is empty — BG treated as absent
+        assert_eq!(parse_gradient("196:"), Some((Some(vec![196]), None)));
+    }
+
+    #[test]
+    fn gradient_single_value() {
+        assert_eq!(parse_gradient("128"), Some((Some(vec![128]), None)));
+    }
+
+    #[test]
+    fn gradient_boundary_values() {
+        assert_eq!(parse_gradient("0"), Some((Some(vec![0]), None)));
+        assert_eq!(parse_gradient("255"), Some((Some(vec![255]), None)));
+    }
+
+    #[test]
+    fn gradient_out_of_range_rejected() {
+        // 256 overflows u8
+        assert_eq!(parse_gradient("256"), None);
+    }
+
+    #[test]
+    fn gradient_non_numeric_rejected() {
+        assert_eq!(parse_gradient("red"), None);
+        assert_eq!(parse_gradient("12,abc,34"), None);
+    }
+
+    #[test]
+    fn gradient_both_sides_empty_rejected() {
+        assert_eq!(parse_gradient(":"), None);
+    }
+
+    #[test]
+    fn gradient_empty_string_rejected() {
+        assert_eq!(parse_gradient(""), None);
+    }
+
+    #[test]
+    fn gradient_whitespace_trimmed() {
+        // Spaces around commas are accepted
+        assert_eq!(parse_gradient("226, 220, 214"), Some((Some(vec![226, 220, 214]), None)));
+        assert_eq!(parse_gradient("10, 20 : 30, 40"), Some((Some(vec![10, 20]), Some(vec![30, 40]))));
+    }
+
+    #[test]
+    fn gradient_bg_only_invalid_rejected() {
+        // BG side has invalid value → BG is None; FG is also absent → None overall
+        assert_eq!(parse_gradient(":xyz"), None);
+    }
+
+    #[test]
+    fn gradient_fg_invalid_bg_valid() {
+        // FG side invalid → FG is None; BG valid → Some((None, Some([52])))
+        assert_eq!(parse_gradient("xyz:52"), Some((None, Some(vec![52]))));
+    }
+
+    // ── parse_duration ───────────────────────────────────────────────────────
+
+    #[test]
+    fn duration_valid_range() {
+        assert_eq!(parse_duration("50"), Ok(50));
+        assert_eq!(parse_duration("400"), Ok(400));
+        assert_eq!(parse_duration("10000"), Ok(10_000));
+    }
+
+    #[test]
+    fn duration_below_minimum_rejected() {
+        assert!(parse_duration("49").is_err());
+        assert!(parse_duration("0").is_err());
+    }
+
+    #[test]
+    fn duration_above_maximum_rejected() {
+        assert!(parse_duration("10001").is_err());
+    }
+
+    #[test]
+    fn duration_non_integer_rejected() {
+        assert!(parse_duration("fast").is_err());
+        assert!(parse_duration("1.5").is_err());
+        assert!(parse_duration("").is_err());
+        assert!(parse_duration("-100").is_err());
+    }
+
+    #[test]
+    fn duration_error_messages() {
+        let msg = parse_duration("abc").unwrap_err();
+        assert!(msg.contains("positive integer"), "unexpected: {msg}");
+        let msg = parse_duration("49").unwrap_err();
+        assert!(msg.contains("between"), "unexpected: {msg}");
+    }
 }
