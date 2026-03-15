@@ -7,11 +7,16 @@ use std::fs::OpenOptions;
 use std::io::{self, IsTerminal, Read as IoRead, Write};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
 use style::parse_styled;
+
+static INTERRUPTED: AtomicBool = AtomicBool::new(false);
+
+unsafe extern "C" fn handle_signal(_: libc::c_int) {
+    INTERRUPTED.store(true, Ordering::Relaxed);
+}
 
 struct CliArgs {
     zsh: bool,
@@ -191,14 +196,16 @@ fn main() {
 
     if styled.len() >= MIN_ANIMATION_CHARS {
         if let Ok(mut tty) = OpenOptions::new().read(true).write(true).open("/dev/tty") {
-            let interrupted = Arc::new(AtomicBool::new(false));
-            let flag = interrupted.clone();
-            ctrlc::set_handler(move || flag.store(true, Ordering::Relaxed)).ok();
+            unsafe {
+                libc::signal(libc::SIGINT,  handle_signal as libc::sighandler_t);
+                libc::signal(libc::SIGTERM, handle_signal as libc::sighandler_t);
+                libc::signal(libc::SIGHUP,  handle_signal as libc::sighandler_t);
+            }
 
             let frame_delay = (target_duration / total_frames as u64).max(1);
             write!(tty, "\x1b[?25l").unwrap(); // hide cursor
             for frame in 1..=total_frames {
-                if interrupted.load(Ordering::Relaxed) || tty_has_input(&tty) {
+                if INTERRUPTED.load(Ordering::Relaxed) || tty_has_input(&tty) {
                     break;
                 }
                 frame_buf.clear();
