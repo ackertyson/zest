@@ -26,6 +26,9 @@ printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- sprout
 printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- flames pink
 printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- matrix blue
 
+# Custom 256-color gradient (overrides named color)
+printf '\x1b[36m~/projects\x1b[0m \x1b[96m❯ \x1b[0m' | cargo run -- sprout --gradient 226,220,214,88
+
 # Plain text fallback (no pipe)
 cargo run -- "hello world"
 
@@ -56,6 +59,7 @@ src/
 ### CLI
 
 - `zest [ANIMATION [COLOR]]` — optional positional args select animation and color variant (default: `sprout`)
+- `--gradient <c,...>` — comma-separated 256-color indices (0–255) overriding the named-color gradient; bad/empty input silently falls back to default; for `shine`, resized to 5 entries with a neutral dark-grey BG
 - `--zsh` — wrap ANSI codes for zsh prompt width
 - `-h` / `--help` — print usage
 - Unknown animation names are treated as fallback text; unrecognized colors fall back to the animation's default color

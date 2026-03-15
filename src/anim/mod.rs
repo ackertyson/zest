@@ -135,26 +135,51 @@ pub(super) fn render_sweep<F, L>(
     buf.push_str("\x1b[0m");
 }
 
-pub fn resolve(name: &str, color: Option<&str>) -> Option<Box<dyn Animation>> {
+pub fn resolve(name: &str, color: Option<&str>, custom_gradient: Option<&[u8]>) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
-            let gradient = sprout::gradient_for(color)?;
+            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
+                Box::leak(g.to_vec().into_boxed_slice())
+            } else {
+                sprout::gradient_for(color)?
+            };
             Some(Box::new(sprout::Sprout { gradient }))
         }
         "flames" => {
-            let gradient = flames::gradient_for(color)?;
+            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
+                Box::leak(g.to_vec().into_boxed_slice())
+            } else {
+                flames::gradient_for(color)?
+            };
             Some(Box::new(flames::Flames { gradient }))
         }
         "matrix" => {
-            let gradient = matrix::gradient_for(color)?;
+            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
+                Box::leak(g.to_vec().into_boxed_slice())
+            } else {
+                matrix::gradient_for(color)?
+            };
             Some(Box::new(matrix::Matrix { gradient }))
         }
         "scan" => {
-            let gradient = scan::gradient_for(color)?;
+            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
+                Box::leak(g.to_vec().into_boxed_slice())
+            } else {
+                scan::gradient_for(color)?
+            };
             Some(Box::new(scan::Scan { gradient }))
         }
         "shine" => {
-            let (flash_fg, flash_bg) = shine::gradient_for(color)?;
+            let (flash_fg, flash_bg) = if let Some(g) = custom_gradient {
+                const NEUTRAL_BG: &[u8] = &[238, 237, 237, 236, 236];
+                let mut fg = g.to_vec();
+                let last = *fg.last().unwrap();
+                fg.resize(5, last);
+                fg.truncate(5);
+                (Box::leak(fg.into_boxed_slice()) as &'static [u8], NEUTRAL_BG)
+            } else {
+                shine::gradient_for(color)?
+            };
             Some(Box::new(shine::Shine { flash_fg, flash_bg }))
         }
         _ => None,

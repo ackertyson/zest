@@ -16,6 +16,7 @@ use style::parse_styled;
 struct CliArgs {
     zsh: bool,
     duration: Option<u64>,
+    gradient: Option<Vec<u8>>,
     positional: Vec<String>,
 }
 
@@ -23,6 +24,7 @@ fn parse_cli_args() -> CliArgs {
     let mut args = env::args().skip(1);
     let mut zsh = false;
     let mut duration = None;
+    let mut gradient = None;
     let mut positional = Vec::new();
 
     while let Some(arg) = args.next() {
@@ -53,10 +55,16 @@ fn parse_cli_args() -> CliArgs {
                     },
                 }
             }
+            "--gradient" => {
+                if let Some(val) = args.next() {
+                    let parsed: Result<Vec<u8>, _> = val.split(',').map(|s| s.trim().parse::<u8>()).collect();
+                    if let Ok(g) = parsed { if !g.is_empty() { gradient = Some(g); } }
+                }
+            }
             "-h" | "--help" | "help" => {
                 eprintln!("Usage: zest [OPTIONS] [ANIMATION [COLOR]]");
                 eprintln!();
-                eprintln!("Animates a colorized prompt into view.");
+                eprintln!("Animate your shell prompt into view on each redraw.");
                 eprintln!();
                 eprintln!("Animations:");
                 for (name, desc) in anim::LIST {
@@ -75,6 +83,7 @@ fn parse_cli_args() -> CliArgs {
                 eprintln!();
                 eprintln!("Options:");
                 eprintln!("      --duration <ms>  Total animation duration (50–10000, default 400)");
+                eprintln!("      --gradient <c,...>  Custom gradient: comma-separated 256-color indices (0-255)");
                 eprintln!("      --zsh            Wrap ANSI codes in %{{...%}} for zsh PROMPT");
                 eprintln!("  -h, --help           Show this help");
             }
@@ -82,7 +91,7 @@ fn parse_cli_args() -> CliArgs {
         }
     }
 
-    CliArgs { zsh, duration, positional }
+    CliArgs { zsh, duration, gradient, positional }
 }
 
 fn read_input(is_piped: bool, rest: &[String]) -> String {
@@ -119,20 +128,21 @@ fn main() {
     let is_piped = !stdin.is_terminal();
 
     // Resolve animation from first positional arg, optionally consuming a color second arg
+    let custom_gradient = cli.gradient.as_deref();
     let (animation, text_args) = if let Some(first) = cli.positional.first() {
         let maybe_color = cli.positional.get(1).map(String::as_str);
-        if let Some(a) = anim::resolve(first, maybe_color) {
+        if let Some(a) = anim::resolve(first, maybe_color, custom_gradient) {
             let consumed = if maybe_color.is_some() { 2 } else { 1 };
             (a, &cli.positional[consumed..])
-        } else if let Some(a) = anim::resolve(first, None) {
+        } else if let Some(a) = anim::resolve(first, None, custom_gradient) {
             // Valid animation name but unrecognized color — use default color, don't consume second arg
             (a, &cli.positional[1..])
         } else {
             // Unknown animation name — treat all positionals as text
-            (anim::resolve(anim::DEFAULT, None).unwrap(), cli.positional.as_slice())
+            (anim::resolve(anim::DEFAULT, None, custom_gradient).unwrap(), cli.positional.as_slice())
         }
     } else {
-        (anim::resolve(anim::DEFAULT, None).unwrap(), cli.positional.as_slice())
+        (anim::resolve(anim::DEFAULT, None, custom_gradient).unwrap(), cli.positional.as_slice())
     };
 
     let raw_input = if is_piped {
