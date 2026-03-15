@@ -15,18 +15,43 @@ use style::parse_styled;
 
 struct CliArgs {
     zsh: bool,
+    duration: Option<u64>,
     positional: Vec<String>,
 }
 
 fn parse_cli_args() -> CliArgs {
     let mut args = env::args().skip(1);
     let mut zsh = false;
+    let mut duration = None;
     let mut positional = Vec::new();
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--zsh" => {
                 zsh = true;
+            }
+            "--duration" => {
+                match args.next() {
+                    None => {
+                        eprintln!("error: --duration requires a value in milliseconds");
+                        std::process::exit(1);
+                    }
+                    Some(val) => match val.parse::<u64>() {
+                        Err(_) => {
+                            eprintln!("error: --duration value must be a positive integer, got {:?}", val);
+                            std::process::exit(1);
+                        }
+                        Ok(ms) => {
+                            const MIN_MS: u64 = 50;
+                            const MAX_MS: u64 = 10_000;
+                            if ms < MIN_MS || ms > MAX_MS {
+                                eprintln!("error: --duration must be between {} and {} ms", MIN_MS, MAX_MS);
+                                std::process::exit(1);
+                            }
+                            duration = Some(ms);
+                        }
+                    },
+                }
             }
             "-h" | "--help" | "help" => {
                 eprintln!("Usage: zest [OPTIONS] [ANIMATION [COLOR]]");
@@ -49,14 +74,15 @@ fn parse_cli_args() -> CliArgs {
                 }
                 eprintln!();
                 eprintln!("Options:");
-                eprintln!("      --zsh    Wrap ANSI codes in %{{...%}} for zsh PROMPT");
-                eprintln!("  -h, --help   Show this help");
+                eprintln!("      --duration <ms>  Total animation duration (50–10000, default 400)");
+                eprintln!("      --zsh            Wrap ANSI codes in %{{...%}} for zsh PROMPT");
+                eprintln!("  -h, --help           Show this help");
             }
             _ => positional.push(arg),
         }
     }
 
-    CliArgs { zsh, positional }
+    CliArgs { zsh, duration, positional }
 }
 
 fn read_input(is_piped: bool, rest: &[String]) -> String {
@@ -129,8 +155,8 @@ fn main() {
     // Skip animation for very short prompts — too few chars for the sweep to read as intentional.
     const MIN_ANIMATION_CHARS: usize = 6;
     // Cap total animation duration; scale frame delay down for long prompts.
-    // e.g. 10 chars → 10ms/frame, 40 chars → 8ms, 60 chars → 5ms (floor).
-    const TARGET_DURATION_MS: u64 = 400;
+    const DEFAULT_DURATION_MS: u64 = 400;
+    let target_duration = cli.duration.unwrap_or(DEFAULT_DURATION_MS);
 
     if styled.len() >= MIN_ANIMATION_CHARS {
         if let Ok(mut tty) = OpenOptions::new().read(true).write(true).open("/dev/tty") {
@@ -138,9 +164,7 @@ fn main() {
             let flag = interrupted.clone();
             ctrlc::set_handler(move || flag.store(true, Ordering::Relaxed)).ok();
 
-            let frame_delay = anim::FRAME_DELAY_MS
-                .min(TARGET_DURATION_MS / total_frames as u64)
-                .max(5);
+            let frame_delay = (target_duration / total_frames as u64).max(1);
             write!(tty, "\x1b[?25l").unwrap(); // hide cursor
             for frame in 1..=total_frames {
                 if interrupted.load(Ordering::Relaxed) || tty_has_input(&tty) {

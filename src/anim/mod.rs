@@ -8,7 +8,6 @@ use crate::style::{color256, StyledChar};
 
 
 pub const DEFAULT: &str = "sprout";
-pub const FRAME_DELAY_MS: u64 = 10;
 
 pub const LIST: &[(&str, &str)] = &[
     ("sprout",  "Green cooling gradient sweep"),
