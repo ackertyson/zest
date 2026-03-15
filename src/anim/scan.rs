@@ -11,6 +11,7 @@ const GRADIENT: &[u8] = &[231, 195, 189, 183];
 
 pub struct Scan {
     pub(super) gradient: &'static [u8],
+    pub(super) bg_gradient: Option<&'static [u8]>,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
@@ -32,7 +33,7 @@ impl Animation for Scan {
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         super::render_sweep(
             styled, frame, buf,
-            COOLDOWN_FRAMES, self.gradient,
+            COOLDOWN_FRAMES, self.gradient, self.bg_gradient,
             false,
             |_pos, _frame, sc| sc.ch,
             |_frame, revealed, styled, buf| {
@@ -53,7 +54,7 @@ mod tests {
     fn no_output_before_animation_starts() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Scan { gradient: GRADIENT }.render_frame(&styled, 1, &mut buf);
+        Scan { gradient: GRADIENT, bg_gradient: None }.render_frame(&styled, 1, &mut buf);
         assert!(!buf.contains('a'));
     }
 
@@ -62,7 +63,7 @@ mod tests {
         let styled = parse_styled("a");
         let mut buf = String::new();
         let snap_frame = 3 + COOLDOWN_FRAMES;
-        Scan { gradient: GRADIENT }.render_frame(&styled, snap_frame, &mut buf);
+        Scan { gradient: GRADIENT, bg_gradient: None }.render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }
 }

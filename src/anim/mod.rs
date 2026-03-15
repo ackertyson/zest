@@ -4,6 +4,8 @@ mod shine;
 mod matrix;
 mod scan;
 
+use std::fmt::Write;
+
 use crate::style::{color256, StyledChar};
 
 
@@ -104,6 +106,7 @@ pub(super) fn render_sweep<F, L>(
     buf: &mut String,
     cooldown_frames: usize,
     gradient: &[u8],
+    bg_gradient: Option<&[u8]>,
     snap_trailing: bool,
     cooldown_char: F,
     render_leading: L,
@@ -124,61 +127,78 @@ pub(super) fn render_sweep<F, L>(
             buf.push(sc.ch);
         } else {
             color256(buf, cooldown_color(age, cooldown_frames, gradient));
+            if let Some(bg) = bg_gradient {
+                if age < bg.len() {
+                    write!(buf, "\x1b[48;5;{}m", bg[age]).unwrap();
+                } else {
+                    buf.push_str("\x1b[49m");
+                }
+            }
             buf.push(cooldown_char(i, frame, sc));
         }
     }
 
     if has_lead {
+        if bg_gradient.is_some() {
+            buf.push_str("\x1b[49m");
+        }
         render_leading(frame, rev, styled, buf);
     }
 
     buf.push_str("\x1b[0m");
 }
 
-pub fn resolve(name: &str, color: Option<&str>, custom_gradient: Option<&[u8]>) -> Option<Box<dyn Animation>> {
+fn leak(g: &[u8]) -> &'static [u8] {
+    Box::leak(g.to_vec().into_boxed_slice())
+}
+
+pub fn resolve(name: &str, color: Option<&str>, custom_fg: Option<&[u8]>, custom_bg: Option<&[u8]>) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
-                Box::leak(g.to_vec().into_boxed_slice())
+            let gradient: &'static [u8] = if let Some(g) = custom_fg {
+                leak(g)
             } else {
                 sprout::gradient_for(color)?
             };
-            Some(Box::new(sprout::Sprout { gradient }))
+            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            Some(Box::new(sprout::Sprout { gradient, bg_gradient }))
         }
         "flames" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
-                Box::leak(g.to_vec().into_boxed_slice())
+            let gradient: &'static [u8] = if let Some(g) = custom_fg {
+                leak(g)
             } else {
                 flames::gradient_for(color)?
             };
-            Some(Box::new(flames::Flames { gradient }))
+            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            Some(Box::new(flames::Flames { gradient, bg_gradient }))
         }
         "matrix" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
-                Box::leak(g.to_vec().into_boxed_slice())
+            let gradient: &'static [u8] = if let Some(g) = custom_fg {
+                leak(g)
             } else {
                 matrix::gradient_for(color)?
             };
-            Some(Box::new(matrix::Matrix { gradient }))
+            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            Some(Box::new(matrix::Matrix { gradient, bg_gradient }))
         }
         "scan" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_gradient {
-                Box::leak(g.to_vec().into_boxed_slice())
+            let gradient: &'static [u8] = if let Some(g) = custom_fg {
+                leak(g)
             } else {
                 scan::gradient_for(color)?
             };
-            Some(Box::new(scan::Scan { gradient }))
+            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            Some(Box::new(scan::Scan { gradient, bg_gradient }))
         }
         "shine" => {
-            let (flash_fg, flash_bg) = if let Some(g) = custom_gradient {
-                const NEUTRAL_BG: &[u8] = &[238, 237, 237, 236, 236];
-                let mut fg = g.to_vec();
-                let last = *fg.last().unwrap();
-                fg.resize(5, last);
-                fg.truncate(5);
-                (Box::leak(fg.into_boxed_slice()) as &'static [u8], NEUTRAL_BG)
+            let (named_fg, named_bg) = shine::gradient_for(color)?;
+            let flash_fg: &'static [u8] = if let Some(g) = custom_fg { leak(g) } else { named_fg };
+            let flash_bg: Option<&'static [u8]> = if let Some(g) = custom_bg {
+                Some(leak(g))
+            } else if custom_fg.is_none() {
+                Some(named_bg)
             } else {
-                shine::gradient_for(color)?
+                None
             };
             Some(Box::new(shine::Shine { flash_fg, flash_bg }))
         }

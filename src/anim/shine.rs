@@ -36,7 +36,7 @@ const FLASH_BG_RED: &[u8] = &[88, 238, 237, 236, 235];
 
 pub struct Shine {
     pub(super) flash_fg: &'static [u8],
-    pub(super) flash_bg: &'static [u8],
+    pub(super) flash_bg: Option<&'static [u8]>,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<(&'static [u8], &'static [u8])> {
@@ -65,11 +65,12 @@ impl Animation for Shine {
         let band_center = (frame as isize - 1) / 2;
 
         for (i, sc) in styled.iter().enumerate() {
-            let dist = (i as isize - band_center).abs();
-            if dist <= BAND_HALF {
-                let d = dist as usize;
-                color256(buf, self.flash_fg[d]);
-                write!(buf, "\x1b[48;5;{}m", self.flash_bg[d]).unwrap();
+            let dist = (i as isize - band_center).abs() as usize;
+            let in_fg = dist < self.flash_fg.len();
+            let in_bg = self.flash_bg.map_or(false, |bg| dist < bg.len());
+            if in_fg || in_bg {
+                if in_fg { color256(buf, self.flash_fg[dist]); }
+                if in_bg { write!(buf, "\x1b[48;5;{}m", self.flash_bg.unwrap()[dist]).unwrap(); }
             } else {
                 buf.push_str("\x1b[0m");
                 buf.push_str(&sc.color_prefix);
@@ -88,7 +89,7 @@ mod tests {
     use super::*;
 
     fn default_shine() -> Shine {
-        Shine { flash_fg: FLASH_FG, flash_bg: FLASH_BG }
+        Shine { flash_fg: FLASH_FG, flash_bg: Some(FLASH_BG) }
     }
 
     #[test]

@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::style::{color256, StyledChar};
 
 use super::Animation;
@@ -12,6 +14,7 @@ use super::{GRADIENT_ORANGE, GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_PURPLE, GRA
 
 pub struct Flames {
     pub(super) gradient: &'static [u8],
+    pub(super) bg_gradient: Option<&'static [u8]>,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
@@ -62,11 +65,21 @@ impl Animation for Flames {
                 buf.push(sc.ch);
             } else {
                 color256(buf, wave_color(i, frame, gradient));
+                if let Some(bg) = self.bg_gradient {
+                    if age < bg.len() {
+                        write!(buf, "\x1b[48;5;{}m", bg[age]).unwrap();
+                    } else {
+                        buf.push_str("\x1b[49m");
+                    }
+                }
                 buf.push(flame_char(i, frame));
             }
         }
 
         if has_lead {
+            if self.bg_gradient.is_some() {
+                buf.push_str("\x1b[49m");
+            }
             color256(buf, gradient[0]);
             buf.push(flame_char(rev, frame));
         }
@@ -85,7 +98,7 @@ mod tests {
     fn no_output_before_animation_starts() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Flames { gradient: GRADIENT_ORANGE }.render_frame(&styled, 1, &mut buf);
+        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None }.render_frame(&styled, 1, &mut buf);
         assert!(!buf.contains('a'));
     }
 
@@ -93,7 +106,7 @@ mod tests {
     fn leading_edge_present_at_frame_2() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
-        Flames { gradient: GRADIENT_ORANGE }.render_frame(&styled, 2, &mut buf);
+        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None }.render_frame(&styled, 2, &mut buf);
         assert!(buf.len() > "\x1b[0m".len());
     }
 
@@ -102,7 +115,7 @@ mod tests {
         let styled = parse_styled("a");
         let mut buf = String::new();
         let snap_frame = 3 + COOLDOWN_FRAMES;
-        Flames { gradient: GRADIENT_ORANGE }.render_frame(&styled, snap_frame, &mut buf);
+        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None }.render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }
 }

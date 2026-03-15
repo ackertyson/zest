@@ -14,6 +14,7 @@ const GRADIENT: &[u8] = &[118, 82, 46, 40, 34, 28];
 
 pub struct Matrix {
     pub(super) gradient: &'static [u8],
+    pub(super) bg_gradient: Option<&'static [u8]>,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
@@ -39,7 +40,7 @@ impl Animation for Matrix {
         let gradient = self.gradient;
         super::render_sweep(
             styled, frame, buf,
-            COOLDOWN_FRAMES, gradient,
+            COOLDOWN_FRAMES, gradient, self.bg_gradient,
             true,
             |pos, frame, _sc| matrix_char(pos, frame),
             |_frame, revealed, _styled, buf| {
@@ -60,7 +61,7 @@ mod tests {
     fn no_output_before_animation_starts() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Matrix { gradient: GRADIENT }.render_frame(&styled, 1, &mut buf);
+        Matrix { gradient: GRADIENT, bg_gradient: None }.render_frame(&styled, 1, &mut buf);
         assert!(!buf.contains('a'));
     }
 
@@ -69,7 +70,7 @@ mod tests {
         let styled = parse_styled("a");
         let mut buf = String::new();
         let snap_frame = 3 + COOLDOWN_FRAMES;
-        Matrix { gradient: GRADIENT }.render_frame(&styled, snap_frame, &mut buf);
+        Matrix { gradient: GRADIENT, bg_gradient: None }.render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }
 }
