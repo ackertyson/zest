@@ -9,7 +9,7 @@ use std::fmt::Write;
 use crate::style::{color256, StyledChar};
 
 
-pub const DEFAULT: &str = "sprout";
+pub const DEFAULT: &str = "flames";
 
 pub const LIST: &[(&str, &str)] = &[
     ("sprout",  "Green cooling gradient sweep"),
@@ -152,7 +152,7 @@ fn leak(g: &[u8]) -> &'static [u8] {
     Box::leak(g.to_vec().into_boxed_slice())
 }
 
-pub fn resolve(name: &str, color: Option<&str>, custom_fg: Option<&[u8]>, custom_bg: Option<&[u8]>) -> Option<Box<dyn Animation>> {
+pub fn resolve(name: &str, color: Option<&str>, custom_fg: Option<&[u8]>, custom_bg: Option<&[u8]>, flip_rate: usize) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
             let gradient: &'static [u8] = if let Some(g) = custom_fg {
@@ -170,7 +170,7 @@ pub fn resolve(name: &str, color: Option<&str>, custom_fg: Option<&[u8]>, custom
                 flames::gradient_for(color)?
             };
             let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
-            Some(Box::new(flames::Flames { gradient, bg_gradient }))
+            Some(Box::new(flames::Flames { gradient, bg_gradient, glyph_frames: flip_rate }))
         }
         "matrix" => {
             let gradient: &'static [u8] = if let Some(g) = custom_fg {
@@ -179,7 +179,7 @@ pub fn resolve(name: &str, color: Option<&str>, custom_fg: Option<&[u8]>, custom
                 matrix::gradient_for(color)?
             };
             let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
-            Some(Box::new(matrix::Matrix { gradient, bg_gradient }))
+            Some(Box::new(matrix::Matrix { gradient, bg_gradient, glyph_frames: flip_rate }))
         }
         "scan" => {
             let gradient: &'static [u8] = if let Some(g) = custom_fg {

@@ -103,3 +103,7 @@ See `zest help`
 ```
 
 Run the `colors.sh` script to see the 256-color palette.
+
+## Acknowledgements
+
+Much of this project was written by Claude under human supervision.

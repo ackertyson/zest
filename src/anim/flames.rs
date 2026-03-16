@@ -15,6 +15,7 @@ use super::{GRADIENT_ORANGE, GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_PURPLE, GRA
 pub struct Flames {
     pub(super) gradient: &'static [u8],
     pub(super) bg_gradient: Option<&'static [u8]>,
+    pub(super) glyph_frames: usize,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
@@ -72,7 +73,7 @@ impl Animation for Flames {
                         buf.push_str("\x1b[49m");
                     }
                 }
-                buf.push(flame_char(i, frame));
+                buf.push(flame_char(i, frame / self.glyph_frames));
             }
         }
 
@@ -81,7 +82,7 @@ impl Animation for Flames {
                 buf.push_str("\x1b[49m");
             }
             color256(buf, gradient[0]);
-            buf.push(flame_char(rev, frame));
+            buf.push(flame_char(rev, frame / self.glyph_frames));
         }
 
         buf.push_str("\x1b[0m");
@@ -98,7 +99,7 @@ mod tests {
     fn no_output_before_animation_starts() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None }.render_frame(&styled, 1, &mut buf);
+        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, 1, &mut buf);
         assert!(!buf.contains('a'));
     }
 
@@ -106,7 +107,7 @@ mod tests {
     fn leading_edge_present_at_frame_2() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
-        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None }.render_frame(&styled, 2, &mut buf);
+        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, 2, &mut buf);
         assert!(buf.len() > "\x1b[0m".len());
     }
 
@@ -115,7 +116,7 @@ mod tests {
         let styled = parse_styled("a");
         let mut buf = String::new();
         let snap_frame = 3 + COOLDOWN_FRAMES;
-        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None }.render_frame(&styled, snap_frame, &mut buf);
+        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }
 }

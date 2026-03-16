@@ -21,6 +21,7 @@ unsafe extern "C" fn handle_signal(_: libc::c_int) {
 struct CliArgs {
     zsh: bool,
     duration: Option<u64>,
+    flip_rate: Option<usize>,
     gradient: Option<(Option<Vec<u8>>, Option<Vec<u8>>)>,
     positional: Vec<String>,
 }
@@ -45,6 +46,18 @@ fn parse_gradient(val: &str) -> Option<(Option<Vec<u8>>, Option<Vec<u8>>)> {
 const DURATION_MIN_MS: u64 = 50;
 const DURATION_MAX_MS: u64 = 10_000;
 
+const FLIP_RATE_MIN: usize = 1;
+const FLIP_RATE_MAX: usize = 20;
+
+fn parse_flip_rate(val: &str) -> Result<usize, String> {
+    let n = val.parse::<usize>()
+        .map_err(|_| format!("error: --flip-rate value must be a positive integer, got {:?}", val))?;
+    if n < FLIP_RATE_MIN || n > FLIP_RATE_MAX {
+        return Err(format!("error: --flip-rate must be between {} and {}", FLIP_RATE_MIN, FLIP_RATE_MAX));
+    }
+    Ok(n)
+}
+
 /// Validate a `--duration` string. Returns `Ok(ms)` or `Err(message)`.
 fn parse_duration(val: &str) -> Result<u64, String> {
     let ms = val.parse::<u64>()
@@ -59,6 +72,7 @@ fn parse_cli_args() -> CliArgs {
     let mut args = env::args().skip(1);
     let mut zsh = false;
     let mut duration = None;
+    let mut flip_rate = None;
     let mut gradient = None;
     let mut positional = Vec::new();
 
@@ -75,6 +89,15 @@ fn parse_cli_args() -> CliArgs {
                     }
                     Some(val) => match parse_duration(&val) {
                         Ok(ms) => duration = Some(ms),
+                        Err(msg) => { eprintln!("{}", msg); std::process::exit(1); }
+                    },
+                }
+            }
+            "--flip-rate" => {
+                match args.next() {
+                    None => { eprintln!("error: --flip-rate requires a value"); std::process::exit(1); }
+                    Some(val) => match parse_flip_rate(&val) {
+                        Ok(n) => flip_rate = Some(n),
                         Err(msg) => { eprintln!("{}", msg); std::process::exit(1); }
                     },
                 }
@@ -106,6 +129,7 @@ fn parse_cli_args() -> CliArgs {
                 eprintln!();
                 eprintln!("Options:");
                 eprintln!("      --duration <ms>  Total animation duration (50–10000, default 400)");
+                eprintln!("      --flip-rate <n>  Glyph change rate for flames/matrix (1–20, default 4)");
                 eprintln!("      --gradient <fg[:bg]>  Custom gradient: comma-separated 256-color indices; optional :bg list for background");
                 eprintln!("      --zsh            Wrap ANSI codes in %{{...%}} for zsh PROMPT");
                 eprintln!("  -h, --help           Show this help");
@@ -114,7 +138,7 @@ fn parse_cli_args() -> CliArgs {
         }
     }
 
-    CliArgs { zsh, duration, gradient, positional }
+    CliArgs { zsh, duration, flip_rate, gradient, positional }
 }
 
 fn read_input(is_piped: bool, rest: &[String]) -> String {
@@ -155,20 +179,21 @@ fn main() {
         Some((fg, bg)) => (fg.as_deref(), bg.as_deref()),
         None => (None, None),
     };
+    let flip_rate = cli.flip_rate.unwrap_or(4);
     let (animation, text_args) = if let Some(first) = cli.positional.first() {
         let maybe_color = cli.positional.get(1).map(String::as_str);
-        if let Some(a) = anim::resolve(first, maybe_color, custom_fg, custom_bg) {
+        if let Some(a) = anim::resolve(first, maybe_color, custom_fg, custom_bg, flip_rate) {
             let consumed = if maybe_color.is_some() { 2 } else { 1 };
             (a, &cli.positional[consumed..])
-        } else if let Some(a) = anim::resolve(first, None, custom_fg, custom_bg) {
+        } else if let Some(a) = anim::resolve(first, None, custom_fg, custom_bg, flip_rate) {
             // Valid animation name but unrecognized color — use default color, don't consume second arg
             (a, &cli.positional[1..])
         } else {
             // Unknown animation name — treat all positionals as text
-            (anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg).unwrap(), cli.positional.as_slice())
+            (anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate).unwrap(), cli.positional.as_slice())
         }
     } else {
-        (anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg).unwrap(), cli.positional.as_slice())
+        (anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate).unwrap(), cli.positional.as_slice())
     };
 
     let raw_input = if is_piped {

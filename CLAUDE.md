@@ -63,6 +63,7 @@ src/
 
 - `zest [ANIMATION [COLOR]]` — optional positional args select animation and color variant (default: `sprout`)
 - `--gradient <fg[:bg]>` — comma-separated 256-color FG indices with an optional `:bg,...` list for background colors; each side is independent and arbitrary-length; bad/empty sides silently fall back to default
+- `--flip-rate <n>` — glyph change rate for flames/matrix (1–20, default 4); controls how rapidly scramble glyphs cycle, tuning the animation from frenetic (1) to deliberate (20); only affects those two animations
 - `--zsh` — wrap ANSI codes for zsh prompt width
 - `-h` / `--help` — print usage
 - Unknown animation names are treated as fallback text; unrecognized colors fall back to the animation's default color
@@ -145,11 +146,12 @@ Characters cool down over `COOLDOWN_FRAMES` frames through the selected color gr
 
 The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`. `Flames` holds the resolved gradient and an optional `bg_gradient` field; BG colors are applied during cooldown indexed directly by `age`.
 
-| Constant | Purpose |
+| Constant/Field | Purpose |
 |---|---|
 | `FRAME_DELAY_MS` | Speed of animation |
 | `COOLDOWN_FRAMES` | Length of the fire wake behind the leading edge |
 | `FLAME_CHARS` | Braille/block chars used during the fire phase |
+| `glyph_frames` (field) | Frames each flame glyph holds before changing; set from `--flip-rate` (default 4) |
 
 ### Matrix animation (`anim/matrix.rs`)
 
@@ -157,11 +159,12 @@ Characters sweep in from the left, one per frame, starting at frame 2. During co
 
 `Matrix` holds a gradient field and an optional `bg_gradient` field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`, except for the default green which uses a local `GRADIENT` with different values.
 
-| Constant | Purpose |
+| Constant/Field | Purpose |
 |---|---|
 | `COOLDOWN_FRAMES` | Length of the scramble wake |
 | `GRADIENT` | Matrix-specific green default: `#87ff00` → `#008700` |
 | `MATRIX_CHARS` | ASCII characters used during the scramble phase |
+| `glyph_frames` (field) | Frames each scramble glyph holds before changing; set from `--flip-rate` (default 4) |
 
 ### Shine animation (`anim/shine.rs`)
 
