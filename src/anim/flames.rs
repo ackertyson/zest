@@ -1,14 +1,12 @@
-use crate::style::{color256, StyledChar};
+use crate::style::{StyledChar, color256};
 
 use super::Animation;
 
 const COOLDOWN_FRAMES: usize = 14;
 
-const FLAME_CHARS: &[char] = &[
-    '⣀', '⠠', '⠰', '⠸', '⠼', '⣤', '⣶', '⣿',
-];
+const FLAME_CHARS: &[char] = &['⣀', '⠠', '⠰', '⠸', '⠼', '⣤', '⣶', '⣿'];
 
-use super::{GRADIENT_ORANGE, GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_PURPLE, GRADIENT_PINK};
+use super::{GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_ORANGE, GRADIENT_PINK, GRADIENT_PURPLE};
 
 pub struct Flames {
     pub(super) gradient: &'static [u8],
@@ -19,11 +17,11 @@ pub struct Flames {
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
     match color {
         None | Some("orange") => Some(GRADIENT_ORANGE),
-        Some("blue")          => Some(GRADIENT_BLUE),
-        Some("green")         => Some(GRADIENT_GREEN),
-        Some("purple")        => Some(GRADIENT_PURPLE),
-        Some("pink")          => Some(GRADIENT_PINK),
-        _                     => None,
+        Some("blue") => Some(GRADIENT_BLUE),
+        Some("green") => Some(GRADIENT_GREEN),
+        Some("purple") => Some(GRADIENT_PURPLE),
+        Some("pink") => Some(GRADIENT_PINK),
+        _ => None,
     }
 }
 
@@ -47,13 +45,19 @@ fn wave_color(pos: usize, frame: usize, gradient: &[u8]) -> u8 {
 }
 
 impl Animation for Flames {
-    fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
+    fn cooldown_frames(&self) -> usize {
+        COOLDOWN_FRAMES
+    }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let glyph_frames = self.glyph_frames;
         super::render_sweep(
-            styled, frame, buf,
-            COOLDOWN_FRAMES, self.gradient, self.bg_gradient,
+            styled,
+            frame,
+            buf,
+            COOLDOWN_FRAMES,
+            self.gradient,
+            self.bg_gradient,
             true,
             |pos, _age, frame, gradient| wave_color(pos, frame, gradient),
             |pos, frame, _sc| flame_char(pos, frame / glyph_frames),
@@ -75,7 +79,12 @@ mod tests {
     fn no_output_before_animation_starts() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, 1, &mut buf);
+        Flames {
+            gradient: GRADIENT_ORANGE,
+            bg_gradient: None,
+            glyph_frames: 6,
+        }
+        .render_frame(&styled, 1, &mut buf);
         assert!(!buf.contains('a'));
     }
 
@@ -83,7 +92,12 @@ mod tests {
     fn leading_edge_present_at_frame_2() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
-        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, 2, &mut buf);
+        Flames {
+            gradient: GRADIENT_ORANGE,
+            bg_gradient: None,
+            glyph_frames: 6,
+        }
+        .render_frame(&styled, 2, &mut buf);
         assert!(buf.len() > "\x1b[0m".len());
     }
 
@@ -92,7 +106,12 @@ mod tests {
         let styled = parse_styled("a");
         let mut buf = String::new();
         let snap_frame = 3 + COOLDOWN_FRAMES;
-        Flames { gradient: GRADIENT_ORANGE, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, snap_frame, &mut buf);
+        Flames {
+            gradient: GRADIENT_ORANGE,
+            bg_gradient: None,
+            glyph_frames: 6,
+        }
+        .render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }
 }

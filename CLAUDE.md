@@ -12,6 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
+cargo fmt               # format code (run after changes)
+cargo clippy            # lint (run after changes, fix any warnings)
 cargo build --release   # optimized build
 cargo build             # debug build
 cargo test              # run tests

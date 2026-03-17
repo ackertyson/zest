@@ -18,27 +18,27 @@ pub fn parse_styled(input: &str) -> Vec<StyledChar> {
             // Start of escape sequence
             let mut seq = String::new();
             seq.push(ch);
-            if let Some(&next) = chars.peek() {
-                if next == '[' {
+            if let Some(&next) = chars.peek()
+                && next == '['
+            {
+                seq.push(chars.next().unwrap());
+                // Read until we hit a letter (the terminator)
+                while let Some(&c) = chars.peek() {
                     seq.push(chars.next().unwrap());
-                    // Read until we hit a letter (the terminator)
-                    while let Some(&c) = chars.peek() {
-                        seq.push(chars.next().unwrap());
-                        if ('\x40'..='\x7e').contains(&c) {
-                            break;
-                        }
+                    if ('\x40'..='\x7e').contains(&c) {
+                        break;
                     }
-                    // Only track SGR sequences (ending with 'm')
-                    if seq.ends_with('m') {
-                        if seq == "\x1b[0m" || seq == "\x1b[m" {
-                            current_color.clear();
-                        } else {
-                            current_color.push_str(&seq);
-                        }
-                        shared = Rc::from(current_color.as_str());
-                    }
-                    // Non-SGR CSI sequences are stripped
                 }
+                // Only track SGR sequences (ending with 'm')
+                if seq.ends_with('m') {
+                    if seq == "\x1b[0m" || seq == "\x1b[m" {
+                        current_color.clear();
+                    } else {
+                        current_color.push_str(&seq);
+                    }
+                    shared = Rc::from(current_color.as_str());
+                }
+                // Non-SGR CSI sequences are stripped
             }
         } else if !ch.is_control() || ch == '\t' {
             result.push(StyledChar {

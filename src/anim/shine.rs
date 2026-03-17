@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::style::{color256, StyledChar};
+use crate::style::{StyledChar, color256};
 
 use super::Animation;
 
@@ -42,18 +42,20 @@ pub struct Shine {
 pub fn gradient_for(color: Option<&str>) -> Option<(&'static [u8], &'static [u8])> {
     match color {
         None | Some("yellow") => Some((FLASH_FG, FLASH_BG)),
-        Some("blue")          => Some((FLASH_FG_BLUE, FLASH_BG_BLUE)),
-        Some("green")         => Some((FLASH_FG_GREEN, FLASH_BG_GREEN)),
-        Some("orange")        => Some((FLASH_FG_ORANGE, FLASH_BG_ORANGE)),
-        Some("purple")        => Some((FLASH_FG_PURPLE, FLASH_BG_PURPLE)),
-        Some("pink")          => Some((FLASH_FG_PINK, FLASH_BG_PINK)),
-        Some("red")           => Some((FLASH_FG_RED, FLASH_BG_RED)),
-        _                     => None,
+        Some("blue") => Some((FLASH_FG_BLUE, FLASH_BG_BLUE)),
+        Some("green") => Some((FLASH_FG_GREEN, FLASH_BG_GREEN)),
+        Some("orange") => Some((FLASH_FG_ORANGE, FLASH_BG_ORANGE)),
+        Some("purple") => Some((FLASH_FG_PURPLE, FLASH_BG_PURPLE)),
+        Some("pink") => Some((FLASH_FG_PINK, FLASH_BG_PINK)),
+        Some("red") => Some((FLASH_FG_RED, FLASH_BG_RED)),
+        _ => None,
     }
 }
 
 impl Animation for Shine {
-    fn cooldown_frames(&self) -> usize { 0 }
+    fn cooldown_frames(&self) -> usize {
+        0
+    }
 
     fn total_frames(&self, styled: &[StyledChar]) -> usize {
         // Band moves at half speed (1 char per 2 frames), so double the frame count.
@@ -65,12 +67,16 @@ impl Animation for Shine {
         let band_center = (frame as isize - 1) / 2;
 
         for (i, sc) in styled.iter().enumerate() {
-            let dist = (i as isize - band_center).abs() as usize;
+            let dist = (i as isize - band_center).unsigned_abs();
             let in_fg = dist < self.flash_fg.len();
-            let in_bg = self.flash_bg.map_or(false, |bg| dist < bg.len());
+            let in_bg = self.flash_bg.is_some_and(|bg| dist < bg.len());
             if in_fg || in_bg {
-                if in_fg { color256(buf, self.flash_fg[dist]); }
-                if in_bg { write!(buf, "\x1b[48;5;{}m", self.flash_bg.unwrap()[dist]).unwrap(); }
+                if in_fg {
+                    color256(buf, self.flash_fg[dist]);
+                }
+                if in_bg {
+                    write!(buf, "\x1b[48;5;{}m", self.flash_bg.unwrap()[dist]).unwrap();
+                }
             } else {
                 buf.push_str("\x1b[0m");
                 buf.push_str(&sc.color_prefix);
@@ -89,7 +95,10 @@ mod tests {
     use super::*;
 
     fn default_shine() -> Shine {
-        Shine { flash_fg: FLASH_FG, flash_bg: Some(FLASH_BG) }
+        Shine {
+            flash_fg: FLASH_FG,
+            flash_bg: Some(FLASH_BG),
+        }
     }
 
     #[test]
@@ -116,8 +125,10 @@ mod tests {
         shine.render_frame(&styled, last_frame, &mut buf);
         // Last frame: band is past all chars, so no flash colors should appear
         for color in FLASH_FG {
-            assert!(!buf.contains(&format!("38;5;{color}")),
-                "flash color {color} still present in last frame");
+            assert!(
+                !buf.contains(&format!("38;5;{color}")),
+                "flash color {color} still present in last frame"
+            );
         }
     }
 }

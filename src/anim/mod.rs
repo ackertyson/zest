@@ -1,30 +1,41 @@
 mod flames;
-mod sprout;
-mod shine;
 mod matrix;
 mod scan;
+mod shine;
+mod sprout;
 
 use std::fmt::Write;
 
-use crate::style::{color256, StyledChar};
-
+use crate::style::{StyledChar, color256};
 
 pub const DEFAULT: &str = "flames";
 
 pub const LIST: &[(&str, &str)] = &[
-    ("sprout",  "Green cooling gradient sweep"),
-    ("flames",      "Fire sweep with flickering dot-matrix characters"),
-    ("matrix",      "Random ASCII decodes into correct chars"),
-    ("scan",        "CRT phosphor sweep, brief white afterglow"),
-    ("shine",   "Instant reveal with bright yellow flash band sweep"),
+    ("sprout", "Green cooling gradient sweep"),
+    ("flames", "Fire sweep with flickering dot-matrix characters"),
+    ("matrix", "Random ASCII decodes into correct chars"),
+    ("scan", "CRT phosphor sweep, brief white afterglow"),
+    (
+        "shine",
+        "Instant reveal with bright yellow flash band sweep",
+    ),
 ];
 
 pub const COLORS: &[(&str, &[&str])] = &[
-    ("sprout",  &["green", "orange", "blue", "purple", "pink"]),
-    ("flames",  &["orange", "blue", "green", "purple", "pink"]),
-    ("matrix",  &["green", "blue", "red", "orange", "purple", "pink"]),
-    ("scan",    &["white", "blue", "green", "orange", "purple", "pink", "red"]),
-    ("shine",   &["yellow", "blue", "green", "orange", "purple", "pink", "red"]),
+    ("sprout", &["green", "orange", "blue", "purple", "pink"]),
+    ("flames", &["orange", "blue", "green", "purple", "pink"]),
+    (
+        "matrix",
+        &["green", "blue", "red", "orange", "purple", "pink"],
+    ),
+    (
+        "scan",
+        &["white", "blue", "green", "orange", "purple", "pink", "red"],
+    ),
+    (
+        "shine",
+        &["yellow", "blue", "green", "orange", "purple", "pink", "red"],
+    ),
 ];
 
 pub trait Animation {
@@ -84,7 +95,10 @@ pub(super) fn revealed(frame: usize, n: usize) -> usize {
 }
 
 pub(super) fn last_content(styled: &[StyledChar]) -> usize {
-    styled.iter().rposition(|sc| !sc.ch.is_whitespace()).unwrap_or(styled.len())
+    styled
+        .iter()
+        .rposition(|sc| !sc.ch.is_whitespace())
+        .unwrap_or(styled.len())
 }
 
 pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content: usize) -> bool {
@@ -100,6 +114,7 @@ pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content:
 ///   color immediately (used by flames/matrix to avoid effects on the trailing chevron).
 /// - `render_leading`: renders the leading-edge character into `buf`, given (frame, revealed
 ///   index, styled slice, buf). Called only when a leading edge should be shown.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn render_sweep<C, F, L>(
     styled: &[StyledChar],
     frame: usize,
@@ -167,27 +182,55 @@ fn resolve_gradients(
     Some((fg, custom_bg.map(leak)))
 }
 
-pub fn resolve(name: &str, color: Option<&str>, custom_fg: Option<&[u8]>, custom_bg: Option<&[u8]>, flip_rate: usize) -> Option<Box<dyn Animation>> {
+pub fn resolve(
+    name: &str,
+    color: Option<&str>,
+    custom_fg: Option<&[u8]>,
+    custom_bg: Option<&[u8]>,
+    flip_rate: usize,
+) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
-            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, sprout::gradient_for)?;
-            Some(Box::new(sprout::Sprout { gradient, bg_gradient }))
+            let (gradient, bg_gradient) =
+                resolve_gradients(color, custom_fg, custom_bg, sprout::gradient_for)?;
+            Some(Box::new(sprout::Sprout {
+                gradient,
+                bg_gradient,
+            }))
         }
         "flames" => {
-            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, flames::gradient_for)?;
-            Some(Box::new(flames::Flames { gradient, bg_gradient, glyph_frames: flip_rate }))
+            let (gradient, bg_gradient) =
+                resolve_gradients(color, custom_fg, custom_bg, flames::gradient_for)?;
+            Some(Box::new(flames::Flames {
+                gradient,
+                bg_gradient,
+                glyph_frames: flip_rate,
+            }))
         }
         "matrix" => {
-            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, matrix::gradient_for)?;
-            Some(Box::new(matrix::Matrix { gradient, bg_gradient, glyph_frames: flip_rate }))
+            let (gradient, bg_gradient) =
+                resolve_gradients(color, custom_fg, custom_bg, matrix::gradient_for)?;
+            Some(Box::new(matrix::Matrix {
+                gradient,
+                bg_gradient,
+                glyph_frames: flip_rate,
+            }))
         }
         "scan" => {
-            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, scan::gradient_for)?;
-            Some(Box::new(scan::Scan { gradient, bg_gradient }))
+            let (gradient, bg_gradient) =
+                resolve_gradients(color, custom_fg, custom_bg, scan::gradient_for)?;
+            Some(Box::new(scan::Scan {
+                gradient,
+                bg_gradient,
+            }))
         }
         "shine" => {
             let (named_fg, named_bg) = shine::gradient_for(color)?;
-            let flash_fg: &'static [u8] = if let Some(g) = custom_fg { leak(g) } else { named_fg };
+            let flash_fg: &'static [u8] = if let Some(g) = custom_fg {
+                leak(g)
+            } else {
+                named_fg
+            };
             let flash_bg: Option<&'static [u8]> = if let Some(g) = custom_bg {
                 Some(leak(g))
             } else if custom_fg.is_none() {

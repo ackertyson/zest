@@ -98,7 +98,9 @@ fn assert_signal_exits_cleanly(signum: libc::c_int) {
     let stdout_pipe = child.stdout.take().unwrap();
     let stdout_thread = thread::spawn(move || {
         let mut buf = Vec::new();
-        std::io::BufReader::new(stdout_pipe).read_to_end(&mut buf).unwrap();
+        std::io::BufReader::new(stdout_pipe)
+            .read_to_end(&mut buf)
+            .unwrap();
         buf
     });
 

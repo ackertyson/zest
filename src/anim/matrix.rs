@@ -1,7 +1,7 @@
-use crate::style::{color256, StyledChar};
+use crate::style::{StyledChar, color256};
 
 use super::Animation;
-use super::{GRADIENT_BLUE, GRADIENT_ORANGE, GRADIENT_PURPLE, GRADIENT_PINK, GRADIENT_RED};
+use super::{GRADIENT_BLUE, GRADIENT_ORANGE, GRADIENT_PINK, GRADIENT_PURPLE, GRADIENT_RED};
 
 const COOLDOWN_FRAMES: usize = 12;
 
@@ -21,12 +21,12 @@ pub struct Matrix {
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
     match color {
         None | Some("green") => Some(GRADIENT),
-        Some("blue")         => Some(GRADIENT_BLUE),
-        Some("red")          => Some(GRADIENT_RED),
-        Some("orange")       => Some(GRADIENT_ORANGE),
-        Some("purple")       => Some(GRADIENT_PURPLE),
-        Some("pink")         => Some(GRADIENT_PINK),
-        _                    => None,
+        Some("blue") => Some(GRADIENT_BLUE),
+        Some("red") => Some(GRADIENT_RED),
+        Some("orange") => Some(GRADIENT_ORANGE),
+        Some("purple") => Some(GRADIENT_PURPLE),
+        Some("pink") => Some(GRADIENT_PINK),
+        _ => None,
     }
 }
 
@@ -35,14 +35,20 @@ fn matrix_char(pos: usize, frame: usize) -> char {
 }
 
 impl Animation for Matrix {
-    fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
+    fn cooldown_frames(&self) -> usize {
+        COOLDOWN_FRAMES
+    }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let gradient = self.gradient;
         let glyph_frames = self.glyph_frames;
         super::render_sweep(
-            styled, frame, buf,
-            COOLDOWN_FRAMES, gradient, self.bg_gradient,
+            styled,
+            frame,
+            buf,
+            COOLDOWN_FRAMES,
+            gradient,
+            self.bg_gradient,
             true,
             |_pos, age, _frame, gradient| super::cooldown_color(age, COOLDOWN_FRAMES, gradient),
             |pos, frame, _sc| matrix_char(pos, frame / glyph_frames),
@@ -64,7 +70,12 @@ mod tests {
     fn no_output_before_animation_starts() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
-        Matrix { gradient: GRADIENT, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, 1, &mut buf);
+        Matrix {
+            gradient: GRADIENT,
+            bg_gradient: None,
+            glyph_frames: 6,
+        }
+        .render_frame(&styled, 1, &mut buf);
         assert!(!buf.contains('a'));
     }
 
@@ -73,7 +84,12 @@ mod tests {
         let styled = parse_styled("a");
         let mut buf = String::new();
         let snap_frame = 3 + COOLDOWN_FRAMES;
-        Matrix { gradient: GRADIENT, bg_gradient: None, glyph_frames: 6 }.render_frame(&styled, snap_frame, &mut buf);
+        Matrix {
+            gradient: GRADIENT,
+            bg_gradient: None,
+            glyph_frames: 6,
+        }
+        .render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }
 }
