@@ -13,7 +13,7 @@ pub const DEFAULT: &str = "flames";
 pub const LIST: &[(&str, &str)] = &[
     ("sprout", "Green cooling gradient sweep"),
     ("flames", "Fire sweep with flickering dot-matrix characters"),
-    ("matrix", "Random ASCII decodes into correct chars"),
+    ("matrix", "Scrambled ASCII resolves in random order"),
     ("scan", "CRT phosphor sweep, brief white afterglow"),
     (
         "shine",
@@ -58,10 +58,10 @@ pub const GRADIENT_ORANGE: &[u8] = &[226, 220, 214, 208, 202, 196, 160, 88];
 //    45=#00d7ff   39=#00afff   33=#0087ff   27=#005fff   21=#0000ff   18=#000087   17=#00005f
 pub const GRADIENT_BLUE: &[u8] = &[231, 195, 159, 123, 87, 51, 45, 39, 33, 27, 21, 18, 17];
 
-// bright green → green → dark green
-//   157=#afffaf  120=#87ff87   83=#5fff5f   46=#00ff00
-//    40=#00d700   34=#00af00   28=#008700   22=#005f00
-pub const GRADIENT_GREEN: &[u8] = &[157, 120, 83, 46, 40, 34, 28, 22];
+// bright green → pure green → dark green
+//   157=#afffaf  120=#87ff87   83=#5fff5f   46=#00ff00   40=#00d700
+//    34=#00af00   28=#008700   22=#005f00   16=#000000
+pub const GRADIENT_GREEN: &[u8] = &[157, 120, 83, 46, 40, 34, 28, 22, 16];
 
 // pink/magenta → purple → dark purple
 //   219=#ffafff  213=#ff87ff  207=#ff5fff  201=#ff00ff
@@ -214,6 +214,7 @@ pub fn resolve(
                 gradient,
                 bg_gradient,
                 glyph_frames: flip_rate,
+                trigger: std::cell::OnceCell::new(),
             }))
         }
         "scan" => {

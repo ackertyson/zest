@@ -99,6 +99,7 @@ See `zest help`
 
 ```shell
 --duration 1000 # set animation to last 1000 milliseconds
+--flip-rate 8 # set number of animation frames before glyph change (1 = change glyphs on every frame)
 --gradient :130,94,88,52 # add orangey background glow to leading four characters of sweep
 ```
 

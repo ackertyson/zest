@@ -98,7 +98,7 @@ Shared 256-color gradients live in `anim/mod.rs` and are used by sprout, flames,
 |---|---|
 | `GRADIENT_ORANGE` | `#ffff00` → `#870000` (flames default) |
 | `GRADIENT_BLUE` | White-blue → dark navy |
-| `GRADIENT_GREEN` | Bright green → dark green (sprout default) |
+| `GRADIENT_GREEN` | White-green → dark green (sprout/matrix default) |
 | `GRADIENT_PURPLE` | Pink-magenta → dark violet |
 | `GRADIENT_PINK` | Solid hot pink (`#ff0087`) |
 | `GRADIENT_RED` | Bright red → dark red |
@@ -157,16 +157,16 @@ The `gradient_for(color)` function maps an optional color name to the appropriat
 
 ### Matrix animation (`anim/matrix.rs`)
 
-Characters sweep in from the left, one per frame, starting at frame 2. During cooldown, each position shows a random ASCII character chosen via splitmix64-style hash. Once fully cooled, characters snap to their actual prompt color.
+All characters appear as scrambled ASCII glyphs at frame 2. Characters then resolve to their actual prompt in a **random order** (one per frame), each cooling through the color gradient over `COOLDOWN_FRAMES` before snapping to its real color. The resolve order is a deterministic Fisher-Yates permutation seeded via `hash()`, stored lazily in a `OnceCell<Vec<usize>>` mapping position → trigger step.
 
-`Matrix` holds a gradient field and an optional `bg_gradient` field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`, except for the default green which uses a local `GRADIENT` with different values.
+`Matrix` holds a gradient field and an optional `bg_gradient` field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`.
 
 | Constant/Field | Purpose |
 |---|---|
-| `COOLDOWN_FRAMES` | Length of the scramble wake |
-| `GRADIENT` | Matrix-specific green default: `#87ff00` → `#008700` |
+| `COOLDOWN_FRAMES` | Length of the cooldown gradient per character |
 | `MATRIX_CHARS` | ASCII characters used during the scramble phase |
 | `glyph_frames` (field) | Frames each scramble glyph holds before changing; set from `--flip-rate` (default 4) |
+| `trigger` (field) | `OnceCell<Vec<usize>>` — lazily-built permutation mapping position → reveal step |
 
 ### Shine animation (`anim/shine.rs`)
 
