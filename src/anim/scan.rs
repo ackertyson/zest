@@ -35,6 +35,7 @@ impl Animation for Scan {
             styled, frame, buf,
             COOLDOWN_FRAMES, self.gradient, self.bg_gradient,
             false,
+            |_pos, age, _frame, gradient| super::cooldown_color(age, COOLDOWN_FRAMES, gradient),
             |_pos, _frame, sc| sc.ch,
             |_frame, revealed, styled, buf| {
                 buf.push_str("\x1b[97m");

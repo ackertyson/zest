@@ -52,7 +52,7 @@ src/
   shell.rs             -- wrap_ansi_for_zsh(), is_zsh() (shell-specific logic)
   anim/
     mod.rs             -- Animation trait, resolve() dispatch, cooldown_color(), shared GRADIENT_* constants
-    sprout.rs          -- "sprout" animation (default)
+    sprout.rs          -- "sprout" animation
     flames.rs          -- "flames" animation with color variants (orange/blue/green/purple/pink)
     matrix.rs          -- "matrix" animation
     scan.rs            -- "scan" animation
@@ -61,7 +61,7 @@ src/
 
 ### CLI
 
-- `zest [ANIMATION [COLOR]]` — optional positional args select animation and color variant (default: `sprout`)
+- `zest [ANIMATION [COLOR]]` — optional positional args select animation and color variant (default: `flames`)
 - `--gradient <fg[:bg]>` — comma-separated 256-color FG indices with an optional `:bg,...` list for background colors; each side is independent and arbitrary-length; bad/empty sides silently fall back to default
 - `--flip-rate <n>` — glyph change rate for flames/matrix (1–20, default 4); controls how rapidly scramble glyphs cycle, tuning the animation from frenetic (1) to deliberate (20); only affects those two animations
 - `--zsh` — wrap ANSI codes for zsh prompt width
@@ -115,8 +115,8 @@ Available animations (`zest ANIMATION [COLOR]`):
 
 | Name | Description | Colors |
 |---|---|---|
-| `sprout` | Cooling gradient sweep (default) | `green` (default), `orange`, `blue`, `purple`, `pink` |
-| `flames` | Fire sweep with flickering dot-matrix characters | `orange` (default), `blue`, `green`, `purple`, `pink` |
+| `sprout` | Cooling gradient sweep | `green` (default), `orange`, `blue`, `purple`, `pink` |
+| `flames` | Fire sweep with flickering dot-matrix characters (default) | `orange` (default), `blue`, `green`, `purple`, `pink` |
 | `matrix` | Random ASCII decodes into correct chars | `green` (default), `blue`, `red`, `orange`, `purple`, `pink` |
 | `scan` | CRT phosphor sweep, brief white afterglow | `white` (default), `blue`, `green`, `orange`, `purple`, `pink`, `red` |
 | `shine` | Instant reveal with bright flash band sweeping left-to-right | `yellow` (default), `blue`, `green`, `orange`, `purple`, `pink`, `red` |

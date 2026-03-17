@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 use crate::style::{color256, StyledChar};
 
 use super::Animation;
@@ -52,40 +50,18 @@ impl Animation for Flames {
     fn cooldown_frames(&self) -> usize { COOLDOWN_FRAMES }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
-        let gradient = self.gradient;
-        let n = styled.len();
-        let rev = super::revealed(frame, n);
-        let lc = super::last_content(styled);
-        let has_lead = super::has_leading(frame, rev, n, lc);
-
-        for (i, sc) in styled[..rev].iter().enumerate() {
-            let age = frame.saturating_sub(i + 3);
-            if age >= COOLDOWN_FRAMES || i >= lc {
-                buf.push_str("\x1b[0m");
-                buf.push_str(&sc.color_prefix);
-                buf.push(sc.ch);
-            } else {
-                color256(buf, wave_color(i, frame, gradient));
-                if let Some(bg) = self.bg_gradient {
-                    if age < bg.len() {
-                        write!(buf, "\x1b[48;5;{}m", bg[age]).unwrap();
-                    } else {
-                        buf.push_str("\x1b[49m");
-                    }
-                }
-                buf.push(flame_char(i, frame / self.glyph_frames));
-            }
-        }
-
-        if has_lead {
-            if self.bg_gradient.is_some() {
-                buf.push_str("\x1b[49m");
-            }
-            color256(buf, gradient[0]);
-            buf.push(flame_char(rev, frame / self.glyph_frames));
-        }
-
-        buf.push_str("\x1b[0m");
+        let glyph_frames = self.glyph_frames;
+        super::render_sweep(
+            styled, frame, buf,
+            COOLDOWN_FRAMES, self.gradient, self.bg_gradient,
+            true,
+            |pos, _age, frame, gradient| wave_color(pos, frame, gradient),
+            |pos, frame, _sc| flame_char(pos, frame / glyph_frames),
+            |_frame, revealed, _styled, buf| {
+                color256(buf, self.gradient[0]);
+                buf.push(flame_char(revealed, frame / glyph_frames));
+            },
+        );
     }
 }
 

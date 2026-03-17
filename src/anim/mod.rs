@@ -100,7 +100,7 @@ pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content:
 ///   color immediately (used by flames/matrix to avoid effects on the trailing chevron).
 /// - `render_leading`: renders the leading-edge character into `buf`, given (frame, revealed
 ///   index, styled slice, buf). Called only when a leading edge should be shown.
-pub(super) fn render_sweep<F, L>(
+pub(super) fn render_sweep<C, F, L>(
     styled: &[StyledChar],
     frame: usize,
     buf: &mut String,
@@ -108,9 +108,11 @@ pub(super) fn render_sweep<F, L>(
     gradient: &[u8],
     bg_gradient: Option<&[u8]>,
     snap_trailing: bool,
+    cooldown_fg: C,
     cooldown_char: F,
     render_leading: L,
 ) where
+    C: Fn(usize, usize, usize, &[u8]) -> u8,
     F: Fn(usize, usize, &StyledChar) -> char,
     L: Fn(usize, usize, &[StyledChar], &mut String),
 {
@@ -126,7 +128,7 @@ pub(super) fn render_sweep<F, L>(
             buf.push_str(&sc.color_prefix);
             buf.push(sc.ch);
         } else {
-            color256(buf, cooldown_color(age, cooldown_frames, gradient));
+            color256(buf, cooldown_fg(i, age, frame, gradient));
             if let Some(bg) = bg_gradient {
                 if age < bg.len() {
                     write!(buf, "\x1b[48;5;{}m", bg[age]).unwrap();
@@ -152,42 +154,35 @@ fn leak(g: &[u8]) -> &'static [u8] {
     Box::leak(g.to_vec().into_boxed_slice())
 }
 
+fn resolve_gradients(
+    color: Option<&str>,
+    custom_fg: Option<&[u8]>,
+    custom_bg: Option<&[u8]>,
+    named_fg: impl FnOnce(Option<&str>) -> Option<&'static [u8]>,
+) -> Option<(&'static [u8], Option<&'static [u8]>)> {
+    let fg = match custom_fg {
+        Some(g) => leak(g),
+        None => named_fg(color)?,
+    };
+    Some((fg, custom_bg.map(leak)))
+}
+
 pub fn resolve(name: &str, color: Option<&str>, custom_fg: Option<&[u8]>, custom_bg: Option<&[u8]>, flip_rate: usize) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_fg {
-                leak(g)
-            } else {
-                sprout::gradient_for(color)?
-            };
-            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, sprout::gradient_for)?;
             Some(Box::new(sprout::Sprout { gradient, bg_gradient }))
         }
         "flames" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_fg {
-                leak(g)
-            } else {
-                flames::gradient_for(color)?
-            };
-            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, flames::gradient_for)?;
             Some(Box::new(flames::Flames { gradient, bg_gradient, glyph_frames: flip_rate }))
         }
         "matrix" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_fg {
-                leak(g)
-            } else {
-                matrix::gradient_for(color)?
-            };
-            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, matrix::gradient_for)?;
             Some(Box::new(matrix::Matrix { gradient, bg_gradient, glyph_frames: flip_rate }))
         }
         "scan" => {
-            let gradient: &'static [u8] = if let Some(g) = custom_fg {
-                leak(g)
-            } else {
-                scan::gradient_for(color)?
-            };
-            let bg_gradient: Option<&'static [u8]> = custom_bg.map(leak);
+            let (gradient, bg_gradient) = resolve_gradients(color, custom_fg, custom_bg, scan::gradient_for)?;
             Some(Box::new(scan::Scan { gradient, bg_gradient }))
         }
         "shine" => {

@@ -44,6 +44,7 @@ impl Animation for Matrix {
             styled, frame, buf,
             COOLDOWN_FRAMES, gradient, self.bg_gradient,
             true,
+            |_pos, age, _frame, gradient| super::cooldown_color(age, COOLDOWN_FRAMES, gradient),
             |pos, frame, _sc| matrix_char(pos, frame / glyph_frames),
             |_frame, revealed, _styled, buf| {
                 color256(buf, gradient[0]);

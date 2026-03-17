@@ -32,6 +32,7 @@ impl Animation for Sprout {
             styled, frame, buf,
             COOLDOWN_FRAMES, self.gradient, self.bg_gradient,
             false,
+            |_pos, age, _frame, gradient| super::cooldown_color(age, COOLDOWN_FRAMES, gradient),
             |_pos, _frame, sc| sc.ch,
             |frame, _revealed, _styled, buf| {
                 write!(buf, "\x1b[97m{}", SPINNERS[(frame - 2) % SPINNERS.len()]).unwrap();

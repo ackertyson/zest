@@ -24,7 +24,7 @@ pub fn parse_styled(input: &str) -> Vec<StyledChar> {
                     // Read until we hit a letter (the terminator)
                     while let Some(&c) = chars.peek() {
                         seq.push(chars.next().unwrap());
-                        if c.is_ascii_alphabetic() {
+                        if ('\x40'..='\x7e').contains(&c) {
                             break;
                         }
                     }
@@ -95,6 +95,15 @@ mod tests {
         // Cursor movement sequence \x1b[H should be stripped
         let styled = parse_styled("\x1b[Hhello");
         assert_eq!(styled.len(), 5);
+        assert!(styled[0].color_prefix.is_empty());
+    }
+
+    #[test]
+    fn non_alphabetic_csi_terminator() {
+        // \x1b[2~ is a vt key sequence (Insert key) — '~' is a valid CSI terminator
+        let styled = parse_styled("\x1b[2~hello");
+        assert_eq!(styled.len(), 5);
+        assert_eq!(styled[0].ch, 'h');
         assert!(styled[0].color_prefix.is_empty());
     }
 
