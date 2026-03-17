@@ -1,6 +1,6 @@
 # zest
 
-Animate your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on `stdout`, compatible with fish and zsh prompt mechanics.
+Animate your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on `stdout`, compatible with fish and zsh prompt mechanics. Any typing input will interrupt the animation and immediately draw in your configured prompt, so it doesn't get in the way of your work.
 
 This util is just for fun and is not battle-tested! Use at your own risk.
 

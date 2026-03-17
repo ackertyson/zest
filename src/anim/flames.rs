@@ -4,7 +4,10 @@ use super::Animation;
 
 const COOLDOWN_FRAMES: usize = 14;
 
-const FLAME_CHARS: &[char] = &['⣀', '⠠', '⠰', '⠸', '⠼', '⣤', '⣶', '⣿'];
+const FLAME_CHARS: &[char] = &[
+    '⣀', '⠰', '⠸', '⠼', '⣤', '⣶', '⣿', // original
+    '⠶', '⠷', '⠾', '⠿', '⡶', '⡷', '⣖', '⣞', '⣝', '⣛', '⣚', // mid-density
+];
 
 use super::{GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_ORANGE, GRADIENT_PINK, GRADIENT_PURPLE};
 

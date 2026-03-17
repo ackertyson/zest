@@ -1,4 +1,6 @@
 use std::io::{Read, Write};
+use std::os::fd::RawFd;
+use std::os::unix::process::CommandExt;
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -11,18 +13,82 @@ const PROMPT: &[u8] = b"\x1b[36m~/projects/zest\x1b[0m \x1b[96m\xe2\x9d\xaf \x1b
 // no-animation path where the cursor is never hidden but restore is still emitted.
 const SHORT_PROMPT: &[u8] = b"\x1b[36mhi\x1b[0m";
 
-fn run_zest(input: &[u8], args: &[&str]) -> String {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_zest"))
-        .args(args)
+// ── Pty helpers ─────────────────────────────────────────────────────────────
+//
+// Each child gets its own pseudo-terminal so:
+//   • /dev/tty opens successfully → the full animation path runs
+//   • Animation output goes to the pty, not the real terminal
+//   • Signals are isolated (child is a session leader in its own session)
+
+/// Allocate a pty pair with a reasonable window size.
+fn open_pty() -> (RawFd, RawFd) {
+    let mut master: libc::c_int = 0;
+    let mut slave: libc::c_int = 0;
+    let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
+    ws.ws_col = 200;
+    ws.ws_row = 24;
+    let ret = unsafe {
+        libc::openpty(
+            &mut master,
+            &mut slave,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut ws,
+        )
+    };
+    assert_eq!(ret, 0, "openpty failed");
+    (master, slave)
+}
+
+/// Spawn zest with a pty as its controlling terminal.
+/// Returns (child, pty_master_fd).
+fn spawn_zest(input: &[u8], args: &[&str]) -> (std::process::Child, RawFd) {
+    let (master, slave) = open_pty();
+
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_zest"));
+    cmd.args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("failed to spawn zest");
+        .stderr(Stdio::null());
+
+    unsafe {
+        cmd.pre_exec(move || {
+            libc::close(master); // child doesn't need the master side
+            libc::setsid(); // new session → no controlling terminal yet
+            libc::ioctl(slave, u64::from(libc::TIOCSCTTY), 0); // pty slave becomes controlling tty
+            libc::close(slave); // zest will open /dev/tty itself
+            Ok(())
+        });
+    }
+
+    let mut child = cmd.spawn().expect("failed to spawn zest");
+    unsafe { libc::close(slave) }; // parent doesn't need slave
 
     child.stdin.as_mut().unwrap().write_all(input).unwrap();
-    drop(child.stdin.take()); // close stdin so process sees EOF
+    drop(child.stdin.take());
+
+    (child, master)
+}
+
+/// Drain the pty master in a background thread so animation writes never block.
+fn drain_pty(master: RawFd) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let mut buf = [0u8; 4096];
+        loop {
+            let n = unsafe { libc::read(master, buf.as_mut_ptr() as *mut libc::c_void, buf.len()) };
+            if n <= 0 {
+                break;
+            }
+        }
+        unsafe { libc::close(master) };
+    })
+}
+
+fn run_zest(input: &[u8], args: &[&str]) -> String {
+    let (child, master) = spawn_zest(input, args);
+    let drain = drain_pty(master);
     let output = child.wait_with_output().unwrap();
+    drain.join().unwrap();
     String::from_utf8(output.stdout).unwrap()
 }
 
@@ -67,31 +133,15 @@ fn zsh_short_prompt_still_emits_wrapped_cursor_restore() {
 // ── Signal interrupt tests ────────────────────────────────────────────────────
 //
 // Each test spawns zest with --duration 10000 (10 s) so the animation is still
-// running when the signal arrives ~150 ms later. Assertions:
-//   1. The process exits within 2 s of the signal.
+// running when the signal arrives ~150 ms later. The child runs in its own pty
+// and session, so signals are fully isolated from the test runner. Assertions:
+//   1. The process exits within 500 ms of the signal.
 //   2. stdout is the verbatim prompt followed by \x1b[?25h — the final write is
 //      unconditional, so it must fire regardless of how early the loop was cut.
-//
-// When /dev/tty is unavailable (some CI environments) the animation is skipped
-// and the process exits before the signal is sent. kill(2) then returns ESRCH,
-// which we silently ignore. The assertions still hold: the process exited and
-// wrote correct stdout via the normal (non-animation) code path.
-
-fn spawn_zest_long(input: &[u8]) -> std::process::Child {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_zest"))
-        .args(["--duration", "10000"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("failed to spawn zest");
-    child.stdin.as_mut().unwrap().write_all(input).unwrap();
-    drop(child.stdin.take());
-    child
-}
 
 fn assert_signal_exits_cleanly(signum: libc::c_int) {
-    let mut child = spawn_zest_long(PROMPT);
+    let (mut child, master) = spawn_zest(PROMPT, &["--duration", "10000"]);
+    let drain = drain_pty(master);
 
     // Drain stdout on a background thread so the pipe buffer never fills and
     // blocks the child process before it can act on the signal.
@@ -107,7 +157,6 @@ fn assert_signal_exits_cleanly(signum: libc::c_int) {
     // Give the animation loop time to start before signalling.
     thread::sleep(Duration::from_millis(150));
 
-    // Ignore ESRCH: process may have already exited (no /dev/tty, animation skipped).
     unsafe { libc::kill(child.id() as libc::pid_t, signum) };
 
     // The process must exit promptly after receiving the signal.
@@ -125,6 +174,7 @@ fn assert_signal_exits_cleanly(signum: libc::c_int) {
     }
 
     let stdout = String::from_utf8(stdout_thread.join().unwrap()).unwrap();
+    drain.join().unwrap();
     let expected = format!("{}\x1b[?25h", String::from_utf8_lossy(PROMPT));
     assert_eq!(
         stdout, expected,
