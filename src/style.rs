@@ -18,9 +18,7 @@ pub fn parse_styled(input: &str) -> Vec<StyledChar> {
             // Start of escape sequence
             let mut seq = String::new();
             seq.push(ch);
-            if let Some(&next) = chars.peek()
-                && next == '['
-            {
+            if chars.peek() == Some(&'[') {
                 seq.push(chars.next().unwrap());
                 // Read until we hit a letter (the terminator)
                 while let Some(&c) = chars.peek() {

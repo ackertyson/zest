@@ -274,32 +274,32 @@ fn main() {
     const DEFAULT_DURATION_MS: u64 = 400;
     let target_duration = cli.duration.unwrap_or(DEFAULT_DURATION_MS);
 
-    if styled.len() >= MIN_ANIMATION_CHARS
-        && let Ok(mut tty) = OpenOptions::new().read(true).write(true).open("/dev/tty")
-    {
-        unsafe {
-            libc::signal(libc::SIGINT, handle_signal as libc::sighandler_t);
-            libc::signal(libc::SIGTERM, handle_signal as libc::sighandler_t);
-            libc::signal(libc::SIGHUP, handle_signal as libc::sighandler_t);
-        }
-
-        let frame_delay = (target_duration / total_frames as u64).max(1);
-        write!(tty, "\x1b[?25l").unwrap(); // hide cursor
-        for frame in 1..=total_frames {
-            if INTERRUPTED.load(Ordering::Relaxed) || tty_has_input(&tty) {
-                break;
+    if styled.len() >= MIN_ANIMATION_CHARS {
+        if let Ok(mut tty) = OpenOptions::new().read(true).write(true).open("/dev/tty") {
+            unsafe {
+                libc::signal(libc::SIGINT, handle_signal as libc::sighandler_t);
+                libc::signal(libc::SIGTERM, handle_signal as libc::sighandler_t);
+                libc::signal(libc::SIGHUP, handle_signal as libc::sighandler_t);
             }
-            frame_buf.clear();
-            animation.render_frame(&styled, frame, &mut frame_buf);
-            write!(tty, "\r{}", frame_buf).unwrap();
+
+            let frame_delay = (target_duration / total_frames as u64).max(1);
+            write!(tty, "\x1b[?25l").unwrap(); // hide cursor
+            for frame in 1..=total_frames {
+                if INTERRUPTED.load(Ordering::Relaxed) || tty_has_input(&tty) {
+                    break;
+                }
+                frame_buf.clear();
+                animation.render_frame(&styled, frame, &mut frame_buf);
+                write!(tty, "\r{}", frame_buf).unwrap();
+                tty.flush().unwrap();
+                thread::sleep(Duration::from_millis(frame_delay));
+            }
+            // Return cursor to col 0 without erasing, keeping it hidden. The cursor restore is
+            // emitted via stdout so it becomes visible only after the shell renders the prompt,
+            // eliminating the brief flash of a visible cursor at col 0.
+            write!(tty, "\r").unwrap();
             tty.flush().unwrap();
-            thread::sleep(Duration::from_millis(frame_delay));
         }
-        // Return cursor to col 0 without erasing, keeping it hidden. The cursor restore is
-        // emitted via stdout so it becomes visible only after the shell renders the prompt,
-        // eliminating the brief flash of a visible cursor at col 0.
-        write!(tty, "\r").unwrap();
-        tty.flush().unwrap();
     }
 
     // Final output to stdout (what the shell captures as the prompt).

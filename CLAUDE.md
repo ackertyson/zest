@@ -39,7 +39,18 @@ cargo run -- "hello world"
 
 # Help
 cargo run -- --help
+
+# Release a new version (bumps Cargo.toml, commits, tags, pushes)
+./build/tag.sh 0.2.0
 ```
+
+### Releasing
+
+`build/tag.sh <version>` handles the full release flow: updates `Cargo.toml` version, commits, creates a `v<version>` git tag, and pushes (after confirmation). Requires clean working tree on `master`, in sync with `origin/master`.
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs tests, builds release binaries for macOS (aarch64 + x86_64), and creates a GitHub Release with tarballs and checksums.
+
+Rust toolchain version is pinned in `rust-toolchain.toml`.
 
 ## Architecture
 

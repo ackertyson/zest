@@ -2,6 +2,10 @@
 name = "zest"
 version = "0.1.0"
 edition = "2024"
+description = "Animate your shell prompt into view with a choice of effects"
+license = "MIT"
+repository = "https://github.com/ackertyson/zest"
+homepage = "https://github.com/ackertyson/zest"
 
 [dependencies]
 libc = "0.2"

@@ -8,6 +8,15 @@ This util is just for fun and is not battle-tested! Use at your own risk.
 
 ## Install
 
+### Homebrew (macOS)
+
+```shell
+brew tap ackertyson/zest # only needed once, and thenceforth you can simply...
+brew install zest
+```
+
+### From source
+
 Install [Rust](https://rust-lang.org/tools/install/), then...
 
 ```bash
