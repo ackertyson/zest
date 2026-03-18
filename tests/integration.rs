@@ -56,7 +56,10 @@ fn spawn_zest(input: &[u8], args: &[&str]) -> (std::process::Child, RawFd) {
             libc::close(master); // child doesn't need the master side
             libc::setsid(); // new session → no controlling terminal yet
             libc::ioctl(slave, u64::from(libc::TIOCSCTTY), 0); // pty slave becomes controlling tty
-            libc::close(slave); // zest will open /dev/tty itself
+            // Keep slave open through exec — if all slave fds close before the
+            // exec'd process opens /dev/tty, Linux signals a hangup on the master
+            // and the pty becomes permanently dead. The inherited fd is harmless
+            // (cleaned up on process exit) and prevents the race.
             Ok(())
         });
     }
