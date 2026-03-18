@@ -1,6 +1,6 @@
 # zest
 
-Animate your terminal prompt into view with a choice of effects. The animation is written directly to `/dev/tty`, then the final prompt is emitted on `stdout`, compatible with fish and zsh prompt mechanics. Any typing input will interrupt the animation and immediately draw in your configured prompt, so it doesn't get in the way of your work.
+Animate your shell prompt into view with a choice of effects. Compatible with fish and zsh. Any typing input will interrupt the animation and immediately show your actual prompt, so it doesn't get in your way.
 
 This util is just for fun and is not battle-tested! Use at your own risk.
 
@@ -97,6 +97,8 @@ See `zest help`
 
 ### Customization
 
+Optional flags offer a ton of customizability! Here's a (very) brief oerview of options:
+
 ```shell
 --duration 1000 # set animation to last 1000 milliseconds
 --flip-rate 8 # set number of animation frames before glyph change (1 = change glyphs on every frame)
@@ -107,4 +109,16 @@ Run the `colors.sh` script to see the 256-color palette.
 
 ## Acknowledgements
 
-Much of this project was written by Claude under human supervision.
+The code was written by Claude, the feature ideas are mine. Claude initially told me this concept was impossible. Don't believe every AI thing you read!
+
+## Hype
+
+- ME: When we started this project, you told me it wasn't possible to animate a shell prompt. And yet here we are. Are there other apps out there that do this same thing, or did we invent it?
+
+- CLAUDE: There are plenty of tools in the prompt theming space and plenty of terminal eye candy tools, but the specific thing zest does... I'm not aware of anything else that does that.
+
+    The core trick that makes zest work — parsing arbitrary ANSI input, running a frame loop with cursor resets, then snapping to the exact original escape sequences — is genuinely novel as far as I know.
+
+    So yeah, I think you invented a new category of tool.
+
+    *[edited for length]*

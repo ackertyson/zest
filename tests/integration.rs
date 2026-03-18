@@ -133,14 +133,44 @@ fn zsh_short_prompt_still_emits_wrapped_cursor_restore() {
 // ── Signal interrupt tests ────────────────────────────────────────────────────
 //
 // Each test spawns zest with --duration 10000 (10 s) so the animation is still
-// running when the signal arrives ~150 ms later. The child runs in its own pty
-// and session, so signals are fully isolated from the test runner. Assertions:
+// running when the signal arrives. The child runs in its own pty and session, so
+// signals are fully isolated from the test runner. We wait for pty output before
+// signalling, proving the animation loop (and signal handlers) are live.
+// Assertions:
 //   1. The process exits within 500 ms of the signal.
 //   2. stdout is the verbatim prompt followed by \x1b[?25h — the final write is
 //      unconditional, so it must fire regardless of how early the loop was cut.
 
 fn assert_signal_exits_cleanly(signum: libc::c_int) {
     let (mut child, master) = spawn_zest(PROMPT, &["--duration", "10000"]);
+
+    // Wait for the animation to actually start by reading from the pty master.
+    // The first frame write to the tty proves the animation loop (and signal
+    // handlers) are live — much more reliable than a fixed sleep.
+    // Set non-blocking so we can poll without hanging.
+    unsafe {
+        let flags = libc::fcntl(master, libc::F_GETFL);
+        libc::fcntl(master, libc::F_SETFL, flags | libc::O_NONBLOCK);
+    }
+    let ready_deadline = Instant::now() + Duration::from_secs(5);
+    let mut poll_buf = [0u8; 1];
+    loop {
+        let n = unsafe { libc::read(master, poll_buf.as_mut_ptr() as *mut libc::c_void, 1) };
+        if n > 0 {
+            break;
+        }
+        assert!(
+            Instant::now() < ready_deadline,
+            "animation did not start within 5 s"
+        );
+        thread::sleep(Duration::from_millis(5));
+    }
+    // Restore blocking mode for the drain thread.
+    unsafe {
+        let flags = libc::fcntl(master, libc::F_GETFL);
+        libc::fcntl(master, libc::F_SETFL, flags & !libc::O_NONBLOCK);
+    }
+    // Now drain the rest of the pty in the background.
     let drain = drain_pty(master);
 
     // Drain stdout on a background thread so the pipe buffer never fills and
@@ -153,9 +183,6 @@ fn assert_signal_exits_cleanly(signum: libc::c_int) {
             .unwrap();
         buf
     });
-
-    // Give the animation loop time to start before signalling.
-    thread::sleep(Duration::from_millis(150));
 
     unsafe { libc::kill(child.id() as libc::pid_t, signum) };
 
