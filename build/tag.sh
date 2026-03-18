@@ -44,6 +44,13 @@ if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
   exit 1
 fi
 
+# Ensure version is actually changing
+CURRENT=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+if [ "$CURRENT" = "$VERSION" ]; then
+  echo "Error: Cargo.toml already has version ${VERSION}" >&2
+  exit 1
+fi
+
 # Update version in Cargo.toml
 sed -i '' "s/^version = \".*\"/version = \"${VERSION}\"/" Cargo.toml
 
