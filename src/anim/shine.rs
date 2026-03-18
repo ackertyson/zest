@@ -58,13 +58,11 @@ impl Animation for Shine {
     }
 
     fn total_frames(&self, styled: &[StyledChar]) -> usize {
-        // Band moves at half speed (1 char per 2 frames), so double the frame count.
-        2 * (styled.len() + BAND_HALF as usize) + 2
+        styled.len() + BAND_HALF as usize + 1
     }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
-        // Half-speed: band center advances one char every two frames.
-        let band_center = (frame as isize - 1) / 2;
+        let band_center = frame as isize - 1;
 
         for (i, sc) in styled.iter().enumerate() {
             let dist = (i as isize - band_center).unsigned_abs();
