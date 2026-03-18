@@ -132,8 +132,12 @@ fn parse_cli_args() -> CliArgs {
                     gradient = parse_gradient(&val);
                 }
             }
+            "-v" | "--version" => {
+                eprintln!("zest v{}", env!("CARGO_PKG_VERSION"));
+                std::process::exit(0);
+            }
             "-h" | "--help" | "help" => {
-                eprintln!("Usage: zest [OPTIONS] [ANIMATION [COLOR]]");
+                eprintln!("zest v{}", env!("CARGO_PKG_VERSION"));
                 eprintln!();
                 eprintln!("Animate your shell prompt into view on each redraw.");
                 eprintln!();
@@ -176,6 +180,7 @@ fn parse_cli_args() -> CliArgs {
                 );
                 eprintln!("      --zsh            Wrap ANSI codes in %{{...%}} for zsh PROMPT");
                 eprintln!("  -h, --help           Show this help");
+                eprintln!("  -v, --version        Show version");
             }
             _ => positional.push(arg),
         }
