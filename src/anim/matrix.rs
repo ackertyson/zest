@@ -4,9 +4,15 @@ use std::fmt::Write;
 use crate::style::{StyledChar, color256};
 
 use super::Animation;
-use super::{
-    GRADIENT_BLUE, GRADIENT_GREEN, GRADIENT_ORANGE, GRADIENT_PINK, GRADIENT_PURPLE, GRADIENT_RED,
-};
+
+// Matrix-specific gradients: skewed darker than the shared ones so the bright
+// flash is brief and characters spend most of their cooldown in deeper hues.
+const MATRIX_GREEN: &[u8] = &[83, 46, 40, 34, 34, 28, 28, 22, 16];
+const MATRIX_BLUE: &[u8] = &[87, 51, 45, 39, 33, 27, 21, 18, 17];
+const MATRIX_ORANGE: &[u8] = &[208, 202, 196, 160, 160, 124, 88, 88, 52];
+const MATRIX_PURPLE: &[u8] = &[207, 201, 165, 129, 93, 93, 57, 55, 55];
+const MATRIX_RED: &[u8] = &[196, 160, 124, 124, 88, 88, 52, 52, 16];
+const MATRIX_PINK: &[u8] = &[198];
 
 const COOLDOWN_FRAMES: usize = 12;
 
@@ -22,12 +28,12 @@ pub struct Matrix {
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
     match color {
-        None | Some("green") => Some(GRADIENT_GREEN),
-        Some("blue") => Some(GRADIENT_BLUE),
-        Some("red") => Some(GRADIENT_RED),
-        Some("orange") => Some(GRADIENT_ORANGE),
-        Some("purple") => Some(GRADIENT_PURPLE),
-        Some("pink") => Some(GRADIENT_PINK),
+        None | Some("green") => Some(MATRIX_GREEN),
+        Some("blue") => Some(MATRIX_BLUE),
+        Some("red") => Some(MATRIX_RED),
+        Some("orange") => Some(MATRIX_ORANGE),
+        Some("purple") => Some(MATRIX_PURPLE),
+        Some("pink") => Some(MATRIX_PINK),
         _ => None,
     }
 }
@@ -85,6 +91,7 @@ impl Animation for Matrix {
                     buf.push_str(&sc.color_prefix);
                     buf.push(sc.ch);
                 } else {
+                    buf.push_str("\x1b[1m");
                     color256(buf, super::cooldown_color(age, COOLDOWN_FRAMES, gradient));
                     if let Some(bg) = self.bg_gradient {
                         if age < bg.len() {
@@ -97,6 +104,7 @@ impl Animation for Matrix {
                 }
             } else {
                 // Not yet triggered — scrambled glyph in hottest color
+                buf.push_str("\x1b[1m");
                 color256(buf, gradient[0]);
                 buf.push(matrix_char(i, frame / glyph_frames));
             }
@@ -114,7 +122,7 @@ mod tests {
 
     fn test_matrix() -> Matrix {
         Matrix {
-            gradient: GRADIENT_GREEN,
+            gradient: MATRIX_GREEN,
             bg_gradient: None,
             glyph_frames: 6,
             trigger: OnceCell::new(),
