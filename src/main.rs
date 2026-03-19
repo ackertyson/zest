@@ -14,6 +14,20 @@ use style::parse_styled;
 
 type GradientPair = (Option<Vec<u8>>, Option<Vec<u8>>);
 
+const LOGO: &str = include_str!("../logo.txt");
+
+/// Query terminal width via ioctl. Returns None if it fails.
+fn term_width() -> Option<u16> {
+    unsafe {
+        let mut ws: libc::winsize = std::mem::zeroed();
+        if libc::ioctl(libc::STDERR_FILENO, libc::TIOCGWINSZ, &mut ws) == 0 && ws.ws_col > 0 {
+            Some(ws.ws_col)
+        } else {
+            None
+        }
+    }
+}
+
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
 unsafe extern "C" fn handle_signal(_: libc::c_int) {
@@ -88,6 +102,112 @@ fn parse_duration(val: &str) -> Result<u64, String> {
     Ok(ms)
 }
 
+/// Visible width of a string, skipping ANSI escape sequences.
+fn visible_width(s: &str) -> usize {
+    let mut w = 0;
+    let mut in_esc = false;
+    for c in s.chars() {
+        if in_esc {
+            if c.is_ascii_alphabetic() {
+                in_esc = false;
+            }
+        } else if c == '\x1b' {
+            in_esc = true;
+        } else {
+            w += 1;
+        }
+    }
+    w
+}
+
+fn print_help() {
+    let mut lines: Vec<String> = Vec::new();
+    lines.push(format!("zest v{}", env!("CARGO_PKG_VERSION")));
+    lines.push(String::new());
+    lines.push("Animate your shell prompt into view on each redraw.".into());
+    lines.push(String::new());
+    lines.push("Animations:".into());
+    for (name, desc) in anim::LIST {
+        let marker = if *name == anim::DEFAULT {
+            " (default)"
+        } else {
+            ""
+        };
+        lines.push(format!("  {:<14}{}{}", name, desc, marker));
+    }
+    lines.push(String::new());
+    lines.push("Colors:".into());
+    for (anim_name, colors) in anim::COLORS {
+        let first = colors[0];
+        let rest = &colors[1..];
+        let others: Vec<&str> = rest.to_vec();
+        lines.push(format!(
+            "  {}: {} (default){}",
+            anim_name,
+            first,
+            if others.is_empty() {
+                String::new()
+            } else {
+                format!(", {}", others.join(", "))
+            }
+        ));
+    }
+    lines.push(String::new());
+    lines.push("Options:".into());
+    lines.push("      --duration <ms>  Total animation duration (50–10000, default 400)".into());
+    lines.push(
+        "      --flip-rate <n>  Glyph change rate for flames/matrix (1–20, default 4)".into(),
+    );
+    lines.push(
+        "      --gradient <fg[:bg]>  Custom gradient: comma-separated 256-color indices".into(),
+    );
+    lines.push("      --zsh            Wrap ANSI codes in %{...%} for zsh PROMPT".into());
+    lines.push("  -h, --help           Show this help".into());
+    lines.push("  -v, --version        Show version".into());
+
+    let logo_lines: Vec<&str> = LOGO.lines().collect();
+    let logo_width = logo_lines
+        .iter()
+        .map(|l| visible_width(l))
+        .max()
+        .unwrap_or(0);
+
+    let gap = 4;
+    let help_width = lines.iter().map(|l| l.len()).max().unwrap_or(0);
+    let needed = help_width + gap + logo_width;
+    let tw = term_width().unwrap_or(80) as usize;
+
+    if tw >= needed && !logo_lines.is_empty() {
+        // Side-by-side: vertically center the shorter side
+        let total = lines.len().max(logo_lines.len());
+        let help_offset = total.saturating_sub(lines.len()) / 2;
+        let logo_offset = total.saturating_sub(logo_lines.len()) / 2;
+
+        for i in 0..total {
+            let help_part = if i >= help_offset && i - help_offset < lines.len() {
+                &lines[i - help_offset]
+            } else {
+                ""
+            };
+            let logo_part = if i >= logo_offset && i - logo_offset < logo_lines.len() {
+                logo_lines[i - logo_offset]
+            } else {
+                ""
+            };
+            eprintln!(
+                "{:width$}{}\x1b[0m",
+                help_part,
+                logo_part,
+                width = help_width + gap
+            );
+        }
+    } else {
+        for line in &lines {
+            eprintln!("{}", line);
+        }
+    }
+}
+
 fn parse_cli_args() -> CliArgs {
     let mut args = env::args().skip(1);
     let mut zsh = false;
@@ -137,50 +257,7 @@ fn parse_cli_args() -> CliArgs {
                 std::process::exit(0);
             }
             "-h" | "--help" | "help" => {
-                eprintln!("zest v{}", env!("CARGO_PKG_VERSION"));
-                eprintln!();
-                eprintln!("Animate your shell prompt into view on each redraw.");
-                eprintln!();
-                eprintln!("Animations:");
-                for (name, desc) in anim::LIST {
-                    let marker = if *name == anim::DEFAULT {
-                        " (default)"
-                    } else {
-                        ""
-                    };
-                    eprintln!("  {:<14}{}{}", name, desc, marker);
-                }
-                eprintln!();
-                eprintln!("Colors:");
-                for (anim_name, colors) in anim::COLORS {
-                    let first = colors[0];
-                    let rest = &colors[1..];
-                    let others: Vec<&str> = rest.to_vec();
-                    eprintln!(
-                        "  {}: {} (default){}",
-                        anim_name,
-                        first,
-                        if others.is_empty() {
-                            String::new()
-                        } else {
-                            format!(", {}", others.join(", "))
-                        }
-                    );
-                }
-                eprintln!();
-                eprintln!("Options:");
-                eprintln!(
-                    "      --duration <ms>  Total animation duration (50–10000, default 400)"
-                );
-                eprintln!(
-                    "      --flip-rate <n>  Glyph change rate for flames/matrix (1–20, default 4)"
-                );
-                eprintln!(
-                    "      --gradient <fg[:bg]>  Custom gradient: comma-separated 256-color indices; optional :bg list for background"
-                );
-                eprintln!("      --zsh            Wrap ANSI codes in %{{...%}} for zsh PROMPT");
-                eprintln!("  -h, --help           Show this help");
-                eprintln!("  -v, --version        Show version");
+                print_help();
             }
             _ => positional.push(arg),
         }
