@@ -48,8 +48,6 @@ function fish_prompt
 end
 ```
 
-Each time a new prompt renders, the selected animation fires and then settles into the configured prompt.
-
 ## Zsh integration
 
 Move your prompt-building logic into a function that outputs with `print -P` (which expands `%F{color}` etc. to ANSI codes), then pipe it through `zest`. zest auto-detects zsh via `$ZSH_VERSION` and wraps ANSI codes in `%{...%}` so zsh counts prompt width correctly.
@@ -106,11 +104,11 @@ See `zest help`
 
 ### Customization
 
-Optional flags offer a ton of customizability! Here's a (very) brief oerview of options:
+Optional flags offer a ton of customizability! Here's a (very) brief overview of examples:
 
 ```shell
 --duration 1000 # set animation to last 1000 milliseconds
---flip-rate 8 # set number of animation frames before glyph change (1 = change glyphs on every frame)
+--flip-rate 8 # set number of animation frames before glyph change (1 = change glyphs on every frame, 2 = every other frame, etc.)
 --gradient :130,94,88,52 # add orangey background glow to leading four characters of sweep
 ```
 

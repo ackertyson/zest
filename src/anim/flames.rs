@@ -33,7 +33,7 @@ fn flame_char(pos: usize, frame: usize) -> char {
 }
 
 /// Sinusoidal wave heat — gives organic flowing color variation across the cooldown wake.
-/// Coefficient 0.22 tuned for zest's 10ms frame rate.
+/// Coefficient 0.22 tuned for a ~14-frame cooldown wake.
 fn wave_heat(pos: usize, frame: usize) -> f32 {
     let t = frame as f32 * 0.22;
     let p = pos as f32 * 0.7;

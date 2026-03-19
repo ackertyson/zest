@@ -181,7 +181,7 @@ All characters appear as scrambled ASCII glyphs at frame 2. Characters then reso
 
 ### Shine animation (`anim/shine.rs`)
 
-The entire prompt is shown at its real colors from frame 1 — no reveal sweep. A **flash band** sweeps left-to-right at half speed (one character position every two frames), giving it a slow, dramatic feel.
+The entire prompt is shown at its real colors from frame 1 — no reveal sweep. A **flash band** sweeps left-to-right, one character position per frame (same rate as other sweep animations).
 
 Each character in the band is rendered with FG and/or BG color based on its distance from the band center. A character at distance `d` is in the FG band if `d < flash_fg.len()`, and in the BG band if `flash_bg` is Some and `d < flash_bg.len()`. The two are independent and arbitrary-length. Characters outside both bands show their actual prompt color.
 
@@ -195,7 +195,7 @@ The default yellow named-color band is 9 characters wide (distances 0–4):
 | 3 | 214 `#ffaf00` orange-gold | 237 `#3a3a3a` darker grey |
 | 4 (edge) | 178 `#d7af00` dark gold | 236 `#303030` near-black |
 
-`flash_bg` is `Option<&'static [u8]>` — `None` means no background (e.g. when a custom FG is given without a custom BG). `total_frames` is overridden to `2 * (n + BAND_HALF) + 2` to account for half-speed movement; `BAND_HALF` is not a gradient-length constraint, only a `total_frames` parameter.
+`flash_bg` is `Option<&'static [u8]>` — `None` means no background (e.g. when a custom FG is given without a custom BG). `BAND_HALF` is used in the `total_frames` calculation to ensure the band fully exits the visible area.
 
 | Constant | Purpose |
 |---|---|
