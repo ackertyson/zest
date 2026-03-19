@@ -8,6 +8,8 @@ This util is just for fun and is not battle-tested! Use at your own risk.
 
 ## Install
 
+Download from our [Releases](https://github.com/ackertyson/zest/releases) page, or...
+
 ### Homebrew (macOS)
 
 ```shell
