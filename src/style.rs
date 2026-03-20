@@ -18,6 +18,13 @@ pub fn parse_styled(input: &str) -> Vec<StyledChar> {
             // Start of escape sequence
             let mut seq = String::new();
             seq.push(ch);
+            if chars.peek() == Some(&'(') || chars.peek() == Some(&')') {
+                // ISO 2022 character set selection (e.g. \x1b(B for ASCII) — strip entirely.
+                // Linux terminals commonly emit \x1b(B as part of SGR reset.
+                chars.next(); // consume '(' or ')'
+                chars.next(); // consume designator char
+                continue;
+            }
             if chars.peek() == Some(&'[') {
                 seq.push(chars.next().unwrap());
                 // Read until we hit a letter (the terminator)
@@ -103,6 +110,17 @@ mod tests {
         assert_eq!(styled.len(), 5);
         assert_eq!(styled[0].ch, 'h');
         assert!(styled[0].color_prefix.is_empty());
+    }
+
+    #[test]
+    fn iso2022_charset_selection_stripped() {
+        // \x1b(B (select ASCII charset) is emitted by Linux terminals on SGR reset
+        let styled = parse_styled("\x1b[36m~\x1b[0m\x1b(B \x1b[96m❯ \x1b[0m\x1b(B");
+        assert_eq!(styled.len(), 4);
+        assert_eq!(
+            styled.iter().map(|s| s.ch).collect::<Vec<_>>(),
+            vec!['~', ' ', '❯', ' ']
+        );
     }
 
     #[test]

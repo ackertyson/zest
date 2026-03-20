@@ -13,8 +13,15 @@ Download from our [Releases](https://github.com/ackertyson/zest/releases) page, 
 ### Homebrew (macOS)
 
 ```shell
-brew tap ackertyson/zest # only needed once, and thenceforth you can simply...
+brew tap ackertyson/zest
 brew install zest
+```
+
+To upgrade later:
+
+```shell
+brew update
+brew upgrade zest
 ```
 
 ### From source
