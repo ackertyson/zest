@@ -6,6 +6,8 @@ This util is just for fun and is not battle-tested! Use at your own risk.
 
 ![zest chili pepper logo](logo.jpg)
 
+![demo gif](demo.gif)
+
 ## Install
 
 *IMPORTANT: if you uninstall zest, omit it from your config BEFORE you remove the binary, or you may be locked out of your (broken) shell. The example configs below include defensive measures for this.*
@@ -163,7 +165,7 @@ zest matrix --flip-rate 10  # slow, deliberate decode
 
 #### `--gradient <fg[:bg]>`
 
-Override the animation's color gradient with custom [256-color](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) indices. Colors are comma-separated and applied from the leading edge of the animation outward. Foreground and background are separated by a colon; either side can be omitted.
+Override the animation's color gradient with custom [256-color](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) indices. Colors are comma-separated and applied from the leading edge of the animation outward. Foreground and background gradients are separated by a colon; either side can be omitted.
 
 - **Default:** each animation and named color has its own built-in gradient
 - **Values:** comma-separated `0`–`255` color indices
