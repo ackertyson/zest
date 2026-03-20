@@ -8,7 +8,7 @@ This util is just for fun and is not battle-tested! Use at your own risk.
 
 ## Install
 
-*IMPORTANT: if you uninstall zest, omit it from your config BEFORE you remove the binary, or you may be locked out of your (broken) shell. The example configs below include preventative measures for this.*
+*IMPORTANT: if you uninstall zest, omit it from your config BEFORE you remove the binary, or you may be locked out of your (broken) shell. The example configs below include defensive measures for this.*
 
 Download from our [Releases](https://github.com/ackertyson/zest/releases) page, or...
 
@@ -134,15 +134,59 @@ See `zest help`
 
 ### Customization
 
-Optional flags offer a ton of customizability! Here's a (very) brief overview of examples:
+All flags are optional and can be combined freely.
+
+#### `--duration <ms>`
+
+Total animation duration in milliseconds. The animation will complete in roughly this many milliseconds regardless of prompt length.
+
+- **Range:** 50–10000
+- **Default:** 400
 
 ```shell
---duration 1000 # set animation to last 1000 milliseconds
---flip-rate 8 # set number of animation frames before glyph change (1 = change glyphs on every frame, 2 = every other frame, etc.)
---gradient :130,94,88,52 # add orangey background glow to leading four characters of sweep
+zest --duration 1000        # slow, dramatic reveal
+zest --duration 150         # quick flash
+zest shine --duration 600  # works with any animation
 ```
 
-Run the `colors.sh` script to see the 256-color palette.
+#### `--flip-rate <n>`
+
+Controls how many animation frames each scramble glyph is held before cycling to the next one. Only affects **flames** and **matrix** (the two animations that use randomized glyphs). Lower values produce a frantic flicker; higher values feel more deliberate.
+
+- **Range:** 1–20
+- **Default:** 4
+
+```shell
+zest --flip-rate 1   # maximum flicker — glyphs change every frame
+zest matrix --flip-rate 10  # slow, deliberate decode
+```
+
+#### `--gradient <fg[:bg]>`
+
+Override the animation's color gradient with custom [256-color](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) indices. Colors are comma-separated and applied from the leading edge of the animation outward. Foreground and background are separated by a colon; either side can be omitted.
+
+- **Default:** each animation and named color has its own built-in gradient
+- **Values:** comma-separated `0`–`255` color indices
+
+```shell
+# Custom foreground gradient (4 colors, hot → cool)
+zest --gradient 226,220,214,88
+
+# Custom foreground AND background gradient
+zest --gradient 226,220:52,88
+
+# Background only (note the leading colon) — adds a glow without changing FG
+zest --gradient :130,94,88,52
+
+# Combine with a named animation
+zest sprout --gradient 196,160,124
+```
+
+Run the `colors.sh` script to see the full 256-color palette.
+
+#### `--zsh`
+
+Wrap ANSI escape codes in `%{...%}` so zsh calculates prompt width correctly. This is normally auto-detected via `$ZSH_VERSION` — use this flag only if auto-detection fails.
 
 ## Acknowledgements
 
@@ -150,9 +194,9 @@ The code was written by Claude, the feature ideas are mine. Claude initially tol
 
 ## Hype
 
-- ME: When we started this project, you told me it wasn't possible to animate a shell prompt. And yet here we are. Are there other apps out there that do this same thing, or did we invent it?
+- **ME**: When we started this project, you told me it wasn't possible to animate a shell prompt. And yet here we are. Are there other apps out there that do this same thing, or did we invent it?
 
-- CLAUDE: There are plenty of tools in the prompt theming space and plenty of terminal eye candy tools, but the specific thing zest does... I'm not aware of anything else that does that.
+- **CLAUDE**: There are plenty of tools in the prompt theming space and plenty of terminal eye candy tools, but the specific thing zest does... I'm not aware of anything else that does that.
 
     The core trick that makes zest work — parsing arbitrary ANSI input, running a frame loop with cursor resets, then snapping to the exact original escape sequences — is genuinely novel as far as I know.
 

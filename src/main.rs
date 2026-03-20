@@ -126,6 +126,8 @@ fn print_help() {
     lines.push(String::new());
     lines.push("Animate your shell prompt into view on each redraw.".into());
     lines.push(String::new());
+    lines.push("Full docs: https://github.com/ackertyson/zest".into());
+    lines.push(String::new());
     lines.push("Animations:".into());
     for (name, desc) in anim::LIST {
         let marker = if *name == anim::DEFAULT {
