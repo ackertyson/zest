@@ -8,6 +8,8 @@ This util is just for fun and is not battle-tested! Use at your own risk.
 
 ## Install
 
+**IMPORTANT: if you uninstall zest, omit it from your config BEFORE you remove the binary, or you will be locked out of your (broken) shell. Ensure you understand the workarounds for that scenario (using a different shell, moving/disabling shell config, etc.)**
+
 Download from our [Releases](https://github.com/ackertyson/zest/releases) page, or...
 
 ### Homebrew (macOS)
