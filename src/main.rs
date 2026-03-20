@@ -121,30 +121,49 @@ fn visible_width(s: &str) -> usize {
 }
 
 fn print_help() {
+    // ANSI helpers
+    const BOLD: &str = "\x1b[1m";
+    const GREEN: &str = "\x1b[32m";
+    const CYAN: &str = "\x1b[36m";
+    const YELLOW: &str = "\x1b[33m";
+    const DIM: &str = "\x1b[2m";
+    const R: &str = "\x1b[0m";
+    const BG: &str = "\x1b[1;32m"; // bold green (headers)
+    const BW: &str = "\x1b[1m"; // bold (flags/names)
+
     let mut lines: Vec<String> = Vec::new();
-    lines.push(format!("zest v{}", env!("CARGO_PKG_VERSION")));
+    lines.push(format!(
+        "zest v{}",
+        env!("CARGO_PKG_VERSION")
+    ));
     lines.push(String::new());
     lines.push("Animate your shell prompt into view on each redraw.".into());
     lines.push(String::new());
-    lines.push("Full docs: https://github.com/ackertyson/zest".into());
+    lines.push(format!(
+        "Full docs: {CYAN}https://github.com/ackertyson/zest{R}"
+    ));
     lines.push(String::new());
-    lines.push("Animations:".into());
+    lines.push(format!(
+        "{BG}Usage:{R} {BW}zest{R} [ANIMATION [COLOR]] [OPTIONS]"
+    ));
+    lines.push(String::new());
+    lines.push(format!("{BG}Animations:{R}"));
     for (name, desc) in anim::LIST {
         let marker = if *name == anim::DEFAULT {
-            " (default)"
+            format!(" {DIM}(default){R}")
         } else {
-            ""
+            String::new()
         };
-        lines.push(format!("  {:<14}{}{}", name, desc, marker));
+        lines.push(format!("  {BW}{:<14}{R}{}{}", name, desc, marker));
     }
     lines.push(String::new());
-    lines.push("Colors:".into());
+    lines.push(format!("{BG}Colors:{R}"));
     for (anim_name, colors) in anim::COLORS {
         let first = colors[0];
         let rest = &colors[1..];
         let others: Vec<&str> = rest.to_vec();
         lines.push(format!(
-            "  {}: {} (default){}",
+            "  {BW}{}{R}: {YELLOW}{}{R} {DIM}(default){R}{}",
             anim_name,
             first,
             if others.is_empty() {
@@ -155,17 +174,23 @@ fn print_help() {
         ));
     }
     lines.push(String::new());
-    lines.push("Options:".into());
-    lines.push("      --duration <ms>  Total animation duration (50–10000, default 400)".into());
-    lines.push(
-        "      --flip-rate <n>  Glyph change rate for flames/matrix (1–20, default 4)".into(),
-    );
-    lines.push(
-        "      --gradient <fg[:bg]>  Custom gradient: comma-separated 256-color indices".into(),
-    );
-    lines.push("      --zsh            Wrap ANSI codes in %{...%} for zsh PROMPT".into());
-    lines.push("  -h, --help           Show this help".into());
-    lines.push("  -v, --version        Show version".into());
+    lines.push(format!("{BG}Options:{R}"));
+    lines.push(format!(
+        "      {BW}--duration{R} {GREEN}<ms>{R}  Total animation duration {DIM}(50–10000, default 400){R}"
+    ));
+    lines.push(format!(
+        "      {BW}--flip-rate{R} {GREEN}<n>{R}  Glyph change rate for flames/matrix {DIM}(1–20, default 4){R}"
+    ));
+    lines.push(format!(
+        "      {BW}--gradient{R} {GREEN}<fg[:bg]>{R}  Custom gradient: comma-separated 256-color indices"
+    ));
+    lines.push(format!(
+        "      {BW}--zsh{R}            Wrap ANSI codes in %{{...%}} for zsh PROMPT"
+    ));
+    lines.push(format!(
+        "  {BW}-h{R}, {BW}--help{R}           Show this help"
+    ));
+    lines.push(format!("  {BW}-v{R}, {BW}--version{R}        Show version"));
 
     let logo_lines: Vec<&str> = LOGO.lines().collect();
     let logo_width = logo_lines
@@ -175,7 +200,7 @@ fn print_help() {
         .unwrap_or(0);
 
     let gap = 4;
-    let help_width = lines.iter().map(|l| l.len()).max().unwrap_or(0);
+    let help_width = lines.iter().map(|l| visible_width(l)).max().unwrap_or(0);
     let needed = help_width + gap + logo_width;
     let tw = term_width().unwrap_or(80) as usize;
 
@@ -196,12 +221,8 @@ fn print_help() {
             } else {
                 ""
             };
-            eprintln!(
-                "{:width$}{}\x1b[0m",
-                help_part,
-                logo_part,
-                width = help_width + gap
-            );
+            let pad = help_width + gap - visible_width(help_part);
+            eprintln!("{}{:pad$}{}\x1b[0m", help_part, "", logo_part, pad = pad);
         }
     } else {
         for line in &lines {
