@@ -210,6 +210,8 @@ The default yellow named-color band is 9 characters wide (distances 0–4):
 function fish_prompt
     set -l last_pipestatus $pipestatus
     set -lx __fish_last_status $status
+    set -l _zest cat
+    command -q zest; and set _zest zest
     begin
         set_color cyan
         echo -n (prompt_pwd)
@@ -221,6 +223,6 @@ function fish_prompt
         set_color brcyan
         echo -n " ❯ "
         set_color normal
-    end | zest
+    end | $_zest
 end
 ```

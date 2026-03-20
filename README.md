@@ -8,7 +8,7 @@ This util is just for fun and is not battle-tested! Use at your own risk.
 
 ## Install
 
-**IMPORTANT: if you uninstall zest, omit it from your config BEFORE you remove the binary, or you will be locked out of your (broken) shell. Ensure you understand the workarounds for that scenario (using a different shell, moving/disabling shell config, etc.)**
+*IMPORTANT: if you uninstall zest, omit it from your config BEFORE you remove the binary, or you may be locked out of your (broken) shell. The example configs below include preventative measures for this.*
 
 Download from our [Releases](https://github.com/ackertyson/zest/releases) page, or...
 
@@ -44,6 +44,11 @@ Wrap your prompt's output commands in a `begin ... end | zest` block.
 function fish_prompt
     set -l last_pipestatus $pipestatus
     set -lx __fish_last_status $status
+
+    # ensures prompt still works if zest is uninstalled...
+    set -l _zest cat
+    command -q zest; and set _zest zest --duration 600 --flip-rate 5
+
     begin
         set_color cyan
         echo -n (prompt_pwd)
@@ -55,9 +60,11 @@ function fish_prompt
         set_color brcyan
         echo -n " ❯ "
         set_color normal
-    end | zest
+    end | $_zest
 end
 ```
+
+The `command -q` check means your prompt still works if zest is ever uninstalled.
 
 ## Zsh integration
 
@@ -69,8 +76,14 @@ function my_prompt() {
     print -Pn '%F{cyan} ❯ %f'
 }
 setopt PROMPT_SUBST
-PROMPT='$(my_prompt | zest)'
+if (( $+commands[zest] )); then # ensures prompt still works if zest is uninstalled
+    PROMPT='$(my_prompt | zest)'
+else
+    PROMPT='$(my_prompt)'
+fi
 ```
+
+The `$+commands[zest]` check means your prompt still works if zest is ever uninstalled.
 
 If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-escapes, just pipe the existing output through `zest`.
 
@@ -103,9 +116,15 @@ _build_prompt() {
 }
 
 setopt PROMPT_SUBST
-PROMPT='$(_build_prompt | zest flames)'
+if (( $+commands[zest] )); then # ensures prompt still works if zest is uninstalled
+    PROMPT='$(_build_prompt | zest flames)'
+else
+    PROMPT='$(_build_prompt)'
+fi
 RPROMPT='%F{240}%*%f'   # right-side clock is plain — only left prompt pipes through zest
 ```
+
+The `$+commands[zest]` check means your prompt still works if zest is ever uninstalled.
 
 `precmd` captures `$?` before `vcs_info` can overwrite it. `RPROMPT` is left as a static `%`-escape — only the left prompt needs the animation.
 
