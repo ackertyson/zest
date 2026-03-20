@@ -40,6 +40,8 @@ Wrap your prompt's output commands in a `begin ... end | zest` block.
 
 `$status` and `$pipestatus` are reset by every command — including `set_color` and `echo` — so capture them **before anything else runs** in `fish_prompt`, as shown below. `__fish_last_status` is exported (`-x`) so that `fish_right_prompt`, which runs in a separate scope, can read it. Other fish-managed variables like `$CMD_DURATION`, `$PWD`, and `$USER` reflect shell state rather than command results, so they're safe to read inside the block.
 
+IMPORTANT: the `command -q` check means your prompt still works if zest is ever uninstalled.
+
 ```fish
 function fish_prompt
     set -l last_pipestatus $pipestatus
@@ -64,11 +66,11 @@ function fish_prompt
 end
 ```
 
-The `command -q` check means your prompt still works if zest is ever uninstalled.
-
 ## Zsh integration
 
 Move your prompt-building logic into a function that outputs with `print -P` (which expands `%F{color}` etc. to ANSI codes), then pipe it through `zest`. zest auto-detects zsh via `$ZSH_VERSION` and wraps ANSI codes in `%{...%}` so zsh counts prompt width correctly.
+
+IMPORTANT: the `$+commands[zest]` check means your prompt still works if zest is ever uninstalled.
 
 ```zsh
 function my_prompt() {
@@ -82,8 +84,6 @@ else
     PROMPT='$(my_prompt)'
 fi
 ```
-
-The `$+commands[zest]` check means your prompt still works if zest is ever uninstalled.
 
 If your prompt already uses raw ANSI codes (`$'\x1b[36m'` etc.) rather than `%`-escapes, just pipe the existing output through `zest`.
 
@@ -124,7 +124,7 @@ fi
 RPROMPT='%F{240}%*%f'   # right-side clock is plain — only left prompt pipes through zest
 ```
 
-The `$+commands[zest]` check means your prompt still works if zest is ever uninstalled.
+IMPORTANT: the `$+commands[zest]` check means your prompt still works if zest is ever uninstalled.
 
 `precmd` captures `$?` before `vcs_info` can overwrite it. `RPROMPT` is left as a static `%`-escape — only the left prompt needs the animation.
 
@@ -194,9 +194,9 @@ The code was written by Claude, the feature ideas are mine. Claude initially tol
 
 ## Hype
 
-- **ME**: When we started this project, you told me it wasn't possible to animate a shell prompt. And yet here we are. Are there other apps out there that do this same thing, or did we invent it?
+- **ME:** When we started this project, you told me it wasn't possible to animate a shell prompt. And yet here we are. Are there other apps out there that do this same thing, or did we invent it?
 
-- **CLAUDE**: There are plenty of tools in the prompt theming space and plenty of terminal eye candy tools, but the specific thing zest does... I'm not aware of anything else that does that.
+- **CLAUDE:** There are plenty of tools in the prompt theming space and plenty of terminal eye candy tools, but the specific thing zest does... I'm not aware of anything else that does that.
 
     The core trick that makes zest work — parsing arbitrary ANSI input, running a frame loop with cursor resets, then snapping to the exact original escape sequences — is genuinely novel as far as I know.
 
