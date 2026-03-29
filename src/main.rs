@@ -14,7 +14,14 @@ use style::parse_styled;
 
 type GradientPair = (Option<Vec<u8>>, Option<Vec<u8>>);
 
-const LOGO: &str = include_str!("../logo.txt");
+const LOGO_256: &str = include_str!("../logo_256.txt");
+const LOGO_TRUECOLOR: &str = include_str!("../logo_truecolor.txt");
+
+fn is_truecolor() -> bool {
+    std::env::var("COLORTERM")
+        .map(|v| v == "truecolor" || v == "24bit")
+        .unwrap_or(false)
+}
 
 /// Query terminal width via ioctl. Returns None if it fails.
 fn term_width() -> Option<u16> {
@@ -122,7 +129,6 @@ fn visible_width(s: &str) -> usize {
 
 fn print_help() {
     // ANSI helpers
-    const BOLD: &str = "\x1b[1m";
     const GREEN: &str = "\x1b[32m";
     const CYAN: &str = "\x1b[36m";
     const YELLOW: &str = "\x1b[33m";
@@ -192,7 +198,8 @@ fn print_help() {
     ));
     lines.push(format!("  {BW}-v{R}, {BW}--version{R}        Show version"));
 
-    let logo_lines: Vec<&str> = LOGO.lines().collect();
+    let logo = if is_truecolor() { LOGO_TRUECOLOR } else { LOGO_256 };
+    let logo_lines: Vec<&str> = logo.lines().collect();
     let logo_width = logo_lines
         .iter()
         .map(|l| visible_width(l))

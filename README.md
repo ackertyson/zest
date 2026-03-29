@@ -36,6 +36,10 @@ Install [Rust](https://rust-lang.org/tools/install/), then...
 cargo install --path .
 ```
 
+### Uninstall quirks
+
+Our example shell configs include extra handling in case you uninstall zest while it is still referenced from the config, but this would only be truly dangerous if you’re on a machine which has no other shells installed and no alternative interface (GUI) available. On my dev workstation I skip the safety net and pipe my prompt straight to zest because I have several easy ways to recover from uninstalling in the wrong order. Know and practice your shell recovery avenues!
+
 ## Fish integration
 
 Wrap your prompt's output commands in a `begin ... end | zest` block.
@@ -192,7 +196,7 @@ Wrap ANSI escape codes in `%{...%}` so zsh calculates prompt width correctly. Th
 
 ## Acknowledgements
 
-The code was written by Claude, the feature ideas are mine. Claude initially told me this concept was impossible. Don't believe every AI thing you read!
+The code was written by Claude, the product design is mine. Claude initially told me this concept was impossible. Don't believe every AI thing you read!
 
 ## Hype
 
