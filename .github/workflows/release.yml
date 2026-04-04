@@ -99,4 +99,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create "${{ github.ref_name }}" --generate-notes zest-*.tar.gz checksums.txt
+        run: |
+          flag=""
+          [[ "${{ github.ref_name }}" == *beta* ]] && flag="--prerelease"
+          gh release create "${{ github.ref_name }}" $flag --generate-notes zest-*.tar.gz checksums.txt
