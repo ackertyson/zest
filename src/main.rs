@@ -8,7 +8,7 @@ use std::io::{self, IsTerminal, Read as IoRead, Write};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use style::parse_styled;
 
@@ -138,10 +138,7 @@ fn print_help() {
     const BW: &str = "\x1b[1m"; // bold (flags/names)
 
     let mut lines: Vec<String> = Vec::new();
-    lines.push(format!(
-        "zest v{}",
-        env!("CARGO_PKG_VERSION")
-    ));
+    lines.push(format!("zest v{}", env!("CARGO_PKG_VERSION")));
     lines.push(String::new());
     lines.push("Animate your shell prompt into view on each redraw.".into());
     lines.push(String::new());
@@ -198,7 +195,11 @@ fn print_help() {
     ));
     lines.push(format!("  {BW}-v{R}, {BW}--version{R}        Show version"));
 
-    let logo = if is_truecolor() { LOGO_TRUECOLOR } else { LOGO_256 };
+    let logo = if is_truecolor() {
+        LOGO_TRUECOLOR
+    } else {
+        LOGO_256
+    };
     let logo_lines: Vec<&str> = logo.lines().collect();
     let logo_width = logo_lines
         .iter()
@@ -395,16 +396,38 @@ fn main() {
             }
 
             let frame_delay = (target_duration / total_frames as u64).max(1);
+            let mut debug_log = env::var_os("ZEST_DEBUG").and_then(|path| {
+                OpenOptions::new().create(true).append(true).open(path).ok()
+            });
             write!(tty, "\x1b[?25l").unwrap(); // hide cursor
-            for frame in 1..=total_frames {
-                if INTERRUPTED.load(Ordering::Relaxed) || tty_has_input(&tty) {
+            'anim: for frame in 1..=total_frames {
+                if INTERRUPTED.load(Ordering::Relaxed) {
                     break;
                 }
                 frame_buf.clear();
                 animation.render_frame(&styled, frame, &mut frame_buf);
+                let t0 = Instant::now();
                 write!(tty, "\r{}", frame_buf).unwrap();
                 tty.flush().unwrap();
-                thread::sleep(Duration::from_millis(frame_delay));
+                let write_us = t0.elapsed().as_micros();
+                if let Some(ref mut log) = debug_log {
+                    let ts = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs_f64();
+                    let _ = writeln!(log, "{ts:.6} frame={frame} write_us={write_us}");
+                }
+                // Sleep in short increments so tty input exits the animation
+                // promptly rather than waiting out the full frame delay.
+                const POLL_MS: u64 = 4;
+                let mut slept = 0;
+                while slept < frame_delay {
+                    thread::sleep(Duration::from_millis(POLL_MS.min(frame_delay - slept)));
+                    slept += POLL_MS;
+                    if INTERRUPTED.load(Ordering::Relaxed) || tty_has_input(&tty) {
+                        break 'anim;
+                    }
+                }
             }
             // Return cursor to col 0 without erasing, keeping it hidden. The cursor restore is
             // emitted via stdout so it becomes visible only after the shell renders the prompt,
