@@ -7,8 +7,7 @@ use std::fs::OpenOptions;
 use std::io::{self, IsTerminal, Read as IoRead, Write};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 use style::parse_styled;
 
@@ -323,11 +322,27 @@ fn read_input(is_piped: bool, rest: &[String]) -> String {
     }
 }
 
-/// Check if there are bytes waiting in the tty input buffer without consuming them.
-fn tty_has_input(tty: &std::fs::File) -> bool {
-    let mut count: libc::c_int = 0;
-    unsafe { libc::ioctl(tty.as_raw_fd(), libc::FIONREAD, &mut count) };
-    count > 0
+/// Block until input arrives on the tty or the timeout elapses.
+/// Returns true if input is available, false on timeout (or error).
+/// Uses select() so the wait is interrupted immediately when a key is pressed,
+/// rather than sleeping blindly and polling.
+fn wait_for_input(tty: &std::fs::File, timeout: Duration) -> bool {
+    let fd = tty.as_raw_fd();
+    unsafe {
+        let mut read_fds: libc::fd_set = std::mem::zeroed();
+        libc::FD_SET(fd, &mut read_fds);
+        let mut tv = libc::timeval {
+            tv_sec: timeout.as_secs() as libc::time_t,
+            tv_usec: timeout.subsec_micros() as libc::suseconds_t,
+        };
+        libc::select(
+            fd + 1,
+            &mut read_fds,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut tv,
+        ) > 0
+    }
 }
 
 fn main() {
@@ -396,9 +411,6 @@ fn main() {
             }
 
             let frame_delay = (target_duration / total_frames as u64).max(1);
-            let mut debug_log = env::var_os("ZEST_DEBUG").and_then(|path| {
-                OpenOptions::new().create(true).append(true).open(path).ok()
-            });
             write!(tty, "\x1b[?25l").unwrap(); // hide cursor
             'anim: for frame in 1..=total_frames {
                 if INTERRUPTED.load(Ordering::Relaxed) {
@@ -409,24 +421,13 @@ fn main() {
                 let t0 = Instant::now();
                 write!(tty, "\r{}", frame_buf).unwrap();
                 tty.flush().unwrap();
-                let write_us = t0.elapsed().as_micros();
-                if let Some(ref mut log) = debug_log {
-                    let ts = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs_f64();
-                    let _ = writeln!(log, "{ts:.6} frame={frame} write_us={write_us}");
-                }
-                // Sleep in short increments so tty input exits the animation
-                // promptly rather than waiting out the full frame delay.
-                const POLL_MS: u64 = 4;
-                let mut slept = 0;
-                while slept < frame_delay {
-                    thread::sleep(Duration::from_millis(POLL_MS.min(frame_delay - slept)));
-                    slept += POLL_MS;
-                    if INTERRUPTED.load(Ordering::Relaxed) || tty_has_input(&tty) {
-                        break 'anim;
-                    }
+                // Block until a key arrives or the frame delay expires.
+                // select() wakes immediately on input rather than sleeping blindly,
+                // so there is no overshoot between a keypress and the animation exiting.
+                let elapsed = t0.elapsed();
+                let remaining = Duration::from_millis(frame_delay).saturating_sub(elapsed);
+                if INTERRUPTED.load(Ordering::Relaxed) || wait_for_input(&tty, remaining) {
+                    break 'anim;
                 }
             }
             // Return cursor to col 0 without erasing, keeping it hidden. The cursor restore is
