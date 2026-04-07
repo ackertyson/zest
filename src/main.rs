@@ -1,7 +1,3 @@
-mod anim;
-mod shell;
-mod style;
-
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{self, IsTerminal, Read as IoRead, Write};
@@ -9,7 +5,9 @@ use std::os::fd::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use style::parse_styled;
+use zest::anim;
+use zest::shell;
+use zest::style::parse_styled;
 
 type GradientPair = (Option<Vec<u8>>, Option<Vec<u8>>);
 
@@ -411,7 +409,10 @@ fn main() {
             }
 
             let frame_delay = (target_duration / total_frames as u64).max(1);
-            write!(tty, "\x1b[?25l").unwrap(); // hide cursor
+            // All tty writes treat errors as "stop animating" rather than panicking —
+            // the terminal may disappear mid-animation (disconnect, window close, etc.)
+            // and we must still write the prompt to stdout.
+            let _ = write!(tty, "\x1b[?25l"); // hide cursor
             'anim: for frame in 1..=total_frames {
                 if INTERRUPTED.load(Ordering::Relaxed) {
                     break;
@@ -419,8 +420,9 @@ fn main() {
                 frame_buf.clear();
                 animation.render_frame(&styled, frame, &mut frame_buf);
                 let t0 = Instant::now();
-                write!(tty, "\r{}", frame_buf).unwrap();
-                tty.flush().unwrap();
+                if write!(tty, "\r{}", frame_buf).is_err() || tty.flush().is_err() {
+                    break 'anim;
+                }
                 // Block until a key arrives or the frame delay expires.
                 // select() wakes immediately on input rather than sleeping blindly,
                 // so there is no overshoot between a keypress and the animation exiting.
@@ -433,8 +435,8 @@ fn main() {
             // Return cursor to col 0 without erasing, keeping it hidden. The cursor restore is
             // emitted via stdout so it becomes visible only after the shell renders the prompt,
             // eliminating the brief flash of a visible cursor at col 0.
-            write!(tty, "\r").unwrap();
-            tty.flush().unwrap();
+            let _ = write!(tty, "\r");
+            let _ = tty.flush();
         }
     }
 

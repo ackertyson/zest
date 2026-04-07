@@ -79,20 +79,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn no_output_before_animation_starts() {
-        let styled = parse_styled("abc");
-        let mut buf = String::new();
-        Flames {
-            gradient: GRADIENT_ORANGE,
-            bg_gradient: None,
-            glyph_frames: 6,
-        }
-        .render_frame(&styled, 1, &mut buf);
-        assert!(!buf.contains('a'));
-    }
-
-    #[test]
-    fn leading_edge_present_at_frame_2() {
+    fn leading_edge_present_at_frame_1() {
         let styled = parse_styled("ab");
         let mut buf = String::new();
         Flames {
@@ -100,7 +87,7 @@ mod tests {
             bg_gradient: None,
             glyph_frames: 6,
         }
-        .render_frame(&styled, 2, &mut buf);
+        .render_frame(&styled, 1, &mut buf);
         assert!(buf.len() > "\x1b[0m".len());
     }
 
@@ -108,7 +95,7 @@ mod tests {
     fn chars_snap_after_cooldown() {
         let styled = parse_styled("a");
         let mut buf = String::new();
-        let snap_frame = 3 + COOLDOWN_FRAMES;
+        let snap_frame = 1 + COOLDOWN_FRAMES;
         Flames {
             gradient: GRADIENT_ORANGE,
             bg_gradient: None,

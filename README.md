@@ -194,6 +194,38 @@ Run the `colors.sh` script to see the full 256-color palette.
 
 Wrap ANSI escape codes in `%{...%}` so zsh calculates prompt width correctly. This is normally auto-detected via `$ZSH_VERSION` — use this flag only if auto-detection fails.
 
+## Testing
+
+```bash
+cargo test                  # run all tests
+cargo test --test animation # just the render_frame() unit tests
+cargo test --test snapshots # just snapshot regression tests
+cargo test --test stability # PTY-level stability tests (signals, broken pipes, etc.)
+cargo test --test integration # basic integration tests
+cargo test --test fish_integration # fish + tmux end-to-end (requires fish and tmux)
+```
+
+### Test suites
+
+| Suite | What it tests | Speed |
+|---|---|---|
+| `animation` | Calls `render_frame()` directly as a pure function — progressive reveal, cooldown gradients, color snap, determinism, all animation+color combos | Fast (no I/O) |
+| `snapshots` | Compares every frame's rendered output against committed `.snap` files to catch visual regressions | Fast |
+| `stability` | Spawns zest with a real PTY and exercises failure modes: SIGWINCH during animation, broken stdout pipe, PTY disconnect, rapid signals, startup latency | Medium |
+| `integration` | End-to-end: pipes ANSI input through the zest binary and verifies final stdout | Medium |
+| `fish_integration` | Fish shell and tmux integration — requires `fish` and `tmux` to be installed, skips gracefully if not | Slow |
+
+### Snapshots
+
+The `tests/snapshots/` directory contains `.snap` files — one per animation. Each file records the exact output of `render_frame()` for every frame of a standard ANSI prompt, with escape sequences shown as readable `\x1b[...]` text. These files are checked into source control so that any change to animation output shows up as a reviewable diff.
+
+If you intentionally change animation behavior, regenerate the snapshots and review the diff:
+
+```bash
+ZEST_UPDATE_SNAPSHOTS=1 cargo test --test snapshots
+git diff tests/snapshots/
+```
+
 ## Acknowledgements
 
 The code was written by Claude, the product design is mine. Claude initially told me this concept was impossible. Don't believe every AI thing you read!

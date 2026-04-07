@@ -40,6 +40,8 @@ pub const COLORS: &[(&str, &[&str])] = &[
 
 pub trait Animation {
     fn cooldown_frames(&self) -> usize;
+    /// Total animation frames. Character i is revealed at frame i+1, so the last
+    /// character (index n−1) appears at frame n and needs cooldown_frames more.
     fn total_frames(&self, styled: &[StyledChar]) -> usize {
         styled.len() + self.cooldown_frames()
     }
@@ -91,7 +93,7 @@ pub(super) fn hash(pos: usize, frame: usize) -> usize {
 }
 
 pub(super) fn revealed(frame: usize, n: usize) -> usize {
-    if frame >= 2 { (frame - 2).min(n) } else { 0 }
+    frame.min(n)
 }
 
 pub(super) fn last_content(styled: &[StyledChar]) -> usize {
@@ -101,8 +103,8 @@ pub(super) fn last_content(styled: &[StyledChar]) -> usize {
         .unwrap_or(styled.len())
 }
 
-pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content: usize) -> bool {
-    frame >= 2 && revealed < n && revealed < last_content
+pub(super) fn has_leading(revealed: usize, n: usize, last_content: usize) -> bool {
+    revealed < n && revealed < last_content
 }
 
 /// Shared left-to-right sweep renderer used by sprout, flames, matrix, and scan.
@@ -134,10 +136,10 @@ pub(super) fn render_sweep<C, F, L>(
     let n = styled.len();
     let rev = revealed(frame, n);
     let lc = last_content(styled);
-    let has_lead = has_leading(frame, rev, n, lc);
+    let has_lead = has_leading(rev, n, lc);
 
     for (i, sc) in styled[..rev].iter().enumerate() {
-        let age = frame.saturating_sub(i + 3);
+        let age = frame.saturating_sub(i + 1);
         if age >= cooldown_frames || (snap_trailing && i >= lc) {
             buf.push_str("\x1b[0m");
             buf.push_str(&sc.color_prefix);

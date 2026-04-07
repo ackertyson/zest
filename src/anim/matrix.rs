@@ -62,11 +62,6 @@ impl Animation for Matrix {
     }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
-        if frame < 2 {
-            buf.push_str("\x1b[0m");
-            return;
-        }
-
         let n = styled.len();
         let gradient = self.gradient;
         let glyph_frames = self.glyph_frames;
@@ -85,7 +80,7 @@ impl Animation for Matrix {
 
             if trigger[i] < revealed {
                 // Triggered — cooling or fully cooled
-                let age = frame.saturating_sub(trigger[i] + 3);
+                let age = frame.saturating_sub(trigger[i] + 1);
                 if age >= COOLDOWN_FRAMES {
                     buf.push_str("\x1b[0m");
                     buf.push_str(&sc.color_prefix);
@@ -130,18 +125,20 @@ mod tests {
     }
 
     #[test]
-    fn no_output_before_animation_starts() {
+    fn all_chars_scrambled_at_frame_1() {
         let styled = parse_styled("abc");
+        let m = test_matrix();
         let mut buf = String::new();
-        test_matrix().render_frame(&styled, 1, &mut buf);
-        assert!(!buf.contains('a'));
+        m.render_frame(&styled, 1, &mut buf);
+        // Frame 1: all chars visible as scrambled glyphs (matrix shows everything immediately)
+        assert!(buf.len() > "\x1b[0m".len());
     }
 
     #[test]
     fn chars_snap_after_cooldown() {
         let styled = parse_styled("a");
         let mut buf = String::new();
-        let snap_frame = 3 + COOLDOWN_FRAMES;
+        let snap_frame = 1 + COOLDOWN_FRAMES;
         test_matrix().render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }

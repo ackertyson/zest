@@ -41,7 +41,7 @@ impl Animation for Sprout {
             |_pos, age, _frame, gradient| super::cooldown_color(age, COOLDOWN_FRAMES, gradient),
             |_pos, _frame, sc| sc.ch,
             |frame, _revealed, _styled, buf| {
-                write!(buf, "\x1b[97m{}", SPINNERS[(frame - 2) % SPINNERS.len()]).unwrap();
+                write!(buf, "\x1b[97m{}", SPINNERS[(frame - 1) % SPINNERS.len()]).unwrap();
             },
         );
     }
@@ -54,7 +54,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn render_frame_first_frame_empty() {
+    fn render_frame_reveals_first_char_at_frame_1() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
         Sprout {
@@ -62,8 +62,8 @@ mod tests {
             bg_gradient: None,
         }
         .render_frame(&styled, 1, &mut buf);
-        // Frame 1: nothing revealed, spinner not yet started
-        assert!(!buf.contains('a'));
+        // Frame 1: first char revealed with spinner leading edge
+        assert!(buf.len() > "\x1b[0m".len());
     }
 
     #[test]
@@ -74,8 +74,8 @@ mod tests {
             gradient: GRADIENT_GREEN,
             bg_gradient: None,
         }
-        .render_frame(&styled, 3, &mut buf);
-        // Frame 3: 1 char revealed
+        .render_frame(&styled, 1, &mut buf);
+        // Frame 1: 1 char revealed
         assert!(buf.contains('a'));
     }
 }
