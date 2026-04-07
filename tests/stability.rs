@@ -253,25 +253,106 @@ fn multiple_rapid_signals_no_panic() {
 // ── Startup latency ─────────────────────────────────────────────────────────
 
 #[test]
-fn startup_latency_under_200ms() {
-    let start = Instant::now();
-    let (mut child, master) = spawn_zest(PROMPT, &["--duration", "10000"]);
+fn startup_latency_under_10ms() {
+    use std::process::{Command, Stdio};
 
-    wait_for_animation_start(master, Duration::from_secs(5));
-    let latency = start.elapsed();
+    // Measure end-to-end: spawn zest with piped input, time until it exits.
+    // Uses --duration 50 (minimum) with a short prompt and no PTY, so zest
+    // reads stdin, discovers there's no controlling terminal, skips animation,
+    // and writes stdout. This measures the real overhead a shell pays for
+    // fork+exec+parse+output — the same path as `printf ... | zest`.
+    const RUNS: usize = 21;
+    let mut times = Vec::with_capacity(RUNS);
 
-    // Clean up
-    let drain = drain_pty(master);
-    let stdout_thread = drain_stdout(&mut child);
-    unsafe { libc::kill(child.id() as libc::pid_t, libc::SIGINT) };
-    child.wait().unwrap();
-    let _ = stdout_thread.join();
-    drain.join().unwrap();
+    for _ in 0..RUNS {
+        let start = Instant::now();
+        let mut child = Command::new(env!("CARGO_BIN_EXE_zest"))
+            .args(["--duration", "50"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("failed to spawn zest");
+
+        {
+            use std::io::Write;
+            child.stdin.as_mut().unwrap().write_all(PROMPT).unwrap();
+            drop(child.stdin.take());
+        }
+
+        let output = child.wait_with_output().unwrap();
+        let elapsed = start.elapsed();
+
+        assert!(output.status.success(), "zest exited with error");
+        assert!(!output.stdout.is_empty(), "zest produced no output");
+
+        times.push(elapsed);
+    }
+
+    times.sort();
+    let median = times[RUNS / 2];
+    eprintln!("startup latency (median of {RUNS}): {median:?}");
 
     assert!(
-        latency < Duration::from_millis(200),
-        "startup latency was {:?} — should be under 200ms",
-        latency
+        median < Duration::from_millis(10),
+        "startup latency median was {:?} — should be under 10ms",
+        median
+    );
+}
+
+// ── First-paint latency (PTY path) ───────────────────────────────────────────
+
+#[test]
+fn first_paint_latency_under_20ms() {
+    // Measures spawn-to-first-TTY-byte with a real PTY — the full animation path
+    // including open("/dev/tty"), signal handlers, cursor hide, and first frame.
+    // Uses select() instead of polling for precise timing.
+    const RUNS: usize = 11;
+    let mut times = Vec::with_capacity(RUNS);
+
+    for _ in 0..RUNS {
+        let start = Instant::now();
+        let (mut child, master) = spawn_zest(PROMPT, &["--duration", "10000"]);
+
+        // Block on select() until the first byte arrives on the PTY master.
+        unsafe {
+            let mut read_fds: libc::fd_set = std::mem::zeroed();
+            libc::FD_SET(master, &mut read_fds);
+            let mut tv = libc::timeval {
+                tv_sec: 5,
+                tv_usec: 0,
+            };
+            let ready = libc::select(
+                master + 1,
+                &mut read_fds,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut tv,
+            );
+            assert!(ready > 0, "no TTY output within 5 s");
+        }
+        let elapsed = start.elapsed();
+        times.push(elapsed);
+
+        // Clean up
+        let drain = drain_pty(master);
+        let stdout_thread = drain_stdout(&mut child);
+        unsafe { libc::kill(child.id() as libc::pid_t, libc::SIGINT) };
+        child.wait().unwrap();
+        let _ = stdout_thread.join();
+        drain.join().unwrap();
+    }
+
+    times.sort();
+    let median = times[RUNS / 2];
+    eprintln!("first paint latency (median of {RUNS}): {median:?}");
+
+    // Median is typically ~2ms. 20ms threshold gives 10x headroom for CI load
+    // while catching regressions that add blocking work before the first TTY write.
+    assert!(
+        median < Duration::from_millis(20),
+        "first paint latency median was {:?} — should be under 20ms",
+        median
     );
 }
 
