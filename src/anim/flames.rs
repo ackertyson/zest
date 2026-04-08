@@ -15,6 +15,7 @@ pub struct Flames {
     pub(super) gradient: &'static [u8],
     pub(super) bg_gradient: Option<&'static [u8]>,
     pub(super) glyph_frames: usize,
+    pub(super) seed: u32,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
@@ -28,8 +29,8 @@ pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
     }
 }
 
-fn flame_char(pos: usize, frame: usize) -> char {
-    FLAME_CHARS[super::hash(pos, frame) % FLAME_CHARS.len()]
+fn flame_char(pos: usize, frame: usize, seed: u32) -> char {
+    FLAME_CHARS[super::hash(pos, frame, seed) % FLAME_CHARS.len()]
 }
 
 /// Sinusoidal wave heat — gives organic flowing color variation across the cooldown wake.
@@ -54,6 +55,7 @@ impl Animation for Flames {
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
         let glyph_frames = self.glyph_frames;
+        let seed = self.seed;
         super::render_sweep(
             styled,
             frame,
@@ -63,10 +65,10 @@ impl Animation for Flames {
             self.bg_gradient,
             true,
             |pos, _age, frame, gradient| wave_color(pos, frame, gradient),
-            |pos, frame, _sc| flame_char(pos, frame / glyph_frames),
+            |pos, frame, _sc| flame_char(pos, frame / glyph_frames, seed),
             |_frame, revealed, _styled, buf| {
                 color256(buf, self.gradient[0]);
-                buf.push(flame_char(revealed, frame / glyph_frames));
+                buf.push(flame_char(revealed, frame / glyph_frames, seed));
             },
         );
     }
@@ -86,6 +88,7 @@ mod tests {
             gradient: GRADIENT_ORANGE,
             bg_gradient: None,
             glyph_frames: 6,
+            seed: 42,
         }
         .render_frame(&styled, 1, &mut buf);
         assert!(buf.len() > "\x1b[0m".len());
@@ -100,6 +103,7 @@ mod tests {
             gradient: GRADIENT_ORANGE,
             bg_gradient: None,
             glyph_frames: 6,
+            seed: 42,
         }
         .render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));

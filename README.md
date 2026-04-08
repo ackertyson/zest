@@ -207,7 +207,7 @@ cargo test --test fish_integration # fish + tmux end-to-end (requires fish and t
 | `snapshots` | Compares every frame's rendered output against committed `.snap` files to catch visual regressions | Fast |
 | `stability` | Spawns zest with a real PTY and exercises failure modes: SIGWINCH during animation, broken stdout pipe, PTY disconnect, rapid signals | Medium |
 | `integration` | End-to-end: pipes ANSI input through the zest binary and verifies final stdout | Medium |
-| `fish_integration` | Fish shell and tmux integration — requires `fish` and `tmux` to be installed, skips gracefully if not | Slow |
+| `fish_integration` | Fish+PTY pipe tests and a tmux smoke test — verifies zest doesn't hang or break in its most common deployment stack (fish inside tmux). Requires `fish` and `tmux`, skips gracefully if not installed | Slow |
 
 ### Snapshots
 

@@ -83,10 +83,13 @@ pub fn cooldown_color(age: usize, cooldown_frames: usize, gradient: &[u8]) -> u8
     gradient[idx]
 }
 
-/// Splitmix64-style hash of position + frame — used by animations for deterministic
-/// per-cell randomness that avalanches all input bits.
-pub(super) fn hash(pos: usize, frame: usize) -> usize {
-    let mut h = pos.wrapping_add(frame.wrapping_mul(0x9e3779b97f4a7c15));
+/// Splitmix64-style hash of position, frame, and seed — used by animations for
+/// per-cell randomness that avalanches all input bits. The seed ensures each
+/// process invocation produces a unique glyph sequence.
+pub(super) fn hash(pos: usize, frame: usize, seed: u32) -> usize {
+    let mut h = pos
+        .wrapping_add(frame.wrapping_mul(0x9e3779b97f4a7c15))
+        .wrapping_add(seed as usize);
     h = (h ^ (h >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
     h = (h ^ (h >> 27)).wrapping_mul(0x94d049bb133111eb);
     h ^ (h >> 31)
@@ -190,6 +193,7 @@ pub fn resolve(
     custom_fg: Option<&[u8]>,
     custom_bg: Option<&[u8]>,
     flip_rate: usize,
+    seed: u32,
 ) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
@@ -207,6 +211,7 @@ pub fn resolve(
                 gradient,
                 bg_gradient,
                 glyph_frames: flip_rate,
+                seed,
             }))
         }
         "matrix" => {
@@ -217,6 +222,7 @@ pub fn resolve(
                 bg_gradient,
                 glyph_frames: flip_rate,
                 trigger: std::cell::OnceCell::new(),
+                seed,
             }))
         }
         "scan" => {

@@ -355,24 +355,25 @@ fn main() {
         None => (None, None),
     };
     let flip_rate = cli.flip_rate.unwrap_or(4);
+    let seed = std::process::id();
     let (animation, text_args) = if let Some(first) = cli.positional.first() {
         let maybe_color = cli.positional.get(1).map(String::as_str);
-        if let Some(a) = anim::resolve(first, maybe_color, custom_fg, custom_bg, flip_rate) {
+        if let Some(a) = anim::resolve(first, maybe_color, custom_fg, custom_bg, flip_rate, seed) {
             let consumed = if maybe_color.is_some() { 2 } else { 1 };
             (a, &cli.positional[consumed..])
-        } else if let Some(a) = anim::resolve(first, None, custom_fg, custom_bg, flip_rate) {
+        } else if let Some(a) = anim::resolve(first, None, custom_fg, custom_bg, flip_rate, seed) {
             // Valid animation name but unrecognized color — use default color, don't consume second arg
             (a, &cli.positional[1..])
         } else {
             // Unknown animation name — treat all positionals as text
             (
-                anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate).unwrap(),
+                anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate, seed).unwrap(),
                 cli.positional.as_slice(),
             )
         }
     } else {
         (
-            anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate).unwrap(),
+            anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate, seed).unwrap(),
             cli.positional.as_slice(),
         )
     };

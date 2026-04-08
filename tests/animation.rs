@@ -10,12 +10,14 @@ use zest::style::parse_styled;
 
 const PROMPT: &str = "\x1b[36m~/projects/zest\x1b[0m \x1b[96m❯ \x1b[0m";
 
+const TEST_SEED: u32 = 42;
+
 fn make_animation(name: &str) -> Box<dyn Animation> {
-    anim::resolve(name, None, None, None, 4).expect("unknown animation")
+    anim::resolve(name, None, None, None, 4, TEST_SEED).expect("unknown animation")
 }
 
 fn make_animation_color(name: &str, color: &str) -> Box<dyn Animation> {
-    anim::resolve(name, Some(color), None, None, 4).expect("unknown animation+color")
+    anim::resolve(name, Some(color), None, None, 4, TEST_SEED).expect("unknown animation+color")
 }
 
 fn render_all_frames(anim: &dyn Animation, input: &str) -> Vec<String> {
@@ -721,7 +723,7 @@ fn shine_band_center_advances_each_frame() {
 #[test]
 fn custom_gradient_applied() {
     let custom_fg: Vec<u8> = vec![196, 160, 124]; // red gradient
-    let anim = anim::resolve("sprout", None, Some(&custom_fg), None, 4).unwrap();
+    let anim = anim::resolve("sprout", None, Some(&custom_fg), None, 4, TEST_SEED).unwrap();
     let styled = parse_styled("abcdefghij");
     let mut buf = String::new();
     anim.render_frame(&styled, 8, &mut buf);
@@ -736,7 +738,7 @@ fn custom_gradient_applied() {
 #[test]
 fn custom_bg_gradient_applied() {
     let custom_bg: Vec<u8> = vec![52, 88, 124];
-    let anim = anim::resolve("sprout", None, None, Some(&custom_bg), 4).unwrap();
+    let anim = anim::resolve("sprout", None, None, Some(&custom_bg), 4, TEST_SEED).unwrap();
     let styled = parse_styled("abcdefghij");
     let mut buf = String::new();
     anim.render_frame(&styled, 6, &mut buf);
@@ -752,9 +754,9 @@ fn custom_bg_gradient_applied() {
 #[test]
 fn flip_rate_affects_glyph_changes() {
     // With flip_rate=1, glyphs change every frame
-    let fast = anim::resolve("flames", None, None, None, 1).unwrap();
+    let fast = anim::resolve("flames", None, None, None, 1, TEST_SEED).unwrap();
     // With flip_rate=20, glyphs hold for 20 frames
-    let slow = anim::resolve("flames", None, None, None, 20).unwrap();
+    let slow = anim::resolve("flames", None, None, None, 20, TEST_SEED).unwrap();
 
     let input = "abcdefghij";
     let styled_fast = parse_styled(input);

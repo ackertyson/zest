@@ -24,6 +24,7 @@ pub struct Matrix {
     pub(super) bg_gradient: Option<&'static [u8]>,
     pub(super) glyph_frames: usize,
     pub(super) trigger: OnceCell<Vec<usize>>,
+    pub(super) seed: u32,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
@@ -38,15 +39,15 @@ pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
     }
 }
 
-fn matrix_char(pos: usize, frame: usize) -> char {
-    MATRIX_CHARS[super::hash(pos, frame) % MATRIX_CHARS.len()] as char
+fn matrix_char(pos: usize, frame: usize, seed: u32) -> char {
+    MATRIX_CHARS[super::hash(pos, frame, seed) % MATRIX_CHARS.len()] as char
 }
 
 /// Fisher-Yates shuffle → inverted to get trigger\[pos\] = step at which that position starts cooling.
-fn build_trigger(n: usize) -> Vec<usize> {
+fn build_trigger(n: usize, seed: u32) -> Vec<usize> {
     let mut order: Vec<usize> = (0..n).collect();
     for i in (1..n).rev() {
-        let j = super::hash(i, 0x4d41_5458) % (i + 1);
+        let j = super::hash(i, 0x4d41_5458, seed) % (i + 1);
         order.swap(i, j);
     }
     let mut trigger = vec![0usize; n];
@@ -65,7 +66,8 @@ impl Animation for Matrix {
         let n = styled.len();
         let gradient = self.gradient;
         let glyph_frames = self.glyph_frames;
-        let trigger = self.trigger.get_or_init(|| build_trigger(n));
+        let seed = self.seed;
+        let trigger = self.trigger.get_or_init(|| build_trigger(n, seed));
         let revealed = super::revealed(frame, n);
         let lc = super::last_content(styled);
 
@@ -95,13 +97,13 @@ impl Animation for Matrix {
                             buf.push_str("\x1b[49m");
                         }
                     }
-                    buf.push(matrix_char(i, frame / glyph_frames));
+                    buf.push(matrix_char(i, frame / glyph_frames, seed));
                 }
             } else {
                 // Not yet triggered — scrambled glyph in hottest color
                 buf.push_str("\x1b[1m");
                 color256(buf, gradient[0]);
-                buf.push(matrix_char(i, frame / glyph_frames));
+                buf.push(matrix_char(i, frame / glyph_frames, seed));
             }
         }
 
@@ -121,6 +123,7 @@ mod tests {
             bg_gradient: None,
             glyph_frames: 6,
             trigger: OnceCell::new(),
+            seed: 42,
         }
     }
 

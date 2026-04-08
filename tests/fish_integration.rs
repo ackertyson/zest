@@ -1,6 +1,11 @@
 //! Fish shell integration tests.
 //!
 //! These tests validate the full fish prompt -> pipe -> zest -> terminal pipeline.
+//! The PTY and fish-only tests verify piped I/O and fish prompt evaluation.
+//! The tmux test is a smoke test for zest's most common deployment environment
+//! (fish inside tmux) — it catches hangs, PTY detection failures, and process
+//! lifecycle issues that only surface through tmux's terminal emulation layer.
+//!
 //! Tests are skipped if fish or tmux are not installed.
 //!
 //! Requires: fish (for all tests), tmux (for tmux tests only)
