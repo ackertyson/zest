@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **Effortless fish/zsh integration** — Pipe to `zest` and go. Existing prompt configs need minimal adjustment.
 3. **Elegant, streamlined, idiomatic Rust** — Clean trait-based architecture, minimal deps, no unnecessary abstractions.
 4. **Flexible composability** — Animation patterns and color gradients mix freely.
+5. **`select()` over polling** — Never use sleep-loop polling to wait for I/O. Use `select()` (or equivalent) to block until data is ready, both in application code and in tests. Polling adds latency equal to half the sleep interval and wastes CPU.
 
 ## Commands
 
