@@ -9,17 +9,29 @@ fi
 
 VERSION="${1#v}"
 
-# Validate semver (major.minor.patch)
-if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "Error: version must be semver (e.g. 1.2.3)" >&2
+# Validate semver (major.minor.patch) with optional -beta.N suffix
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+  echo "Error: version must be semver (e.g. 1.2.3 or 1.2.3-beta.1)" >&2
   exit 1
 fi
 
-# Ensure we're on master
+IS_BETA=false
+[[ "$VERSION" == *beta* ]] && IS_BETA=true
+
 BRANCH=$(git branch --show-current)
-if [ "$BRANCH" != "master" ]; then
-  echo "Error: must be on master (currently on $BRANCH)" >&2
-  exit 1
+
+if [ "$IS_BETA" = true ]; then
+  # Beta releases must originate from a feature branch, not master
+  if [ "$BRANCH" = "master" ]; then
+    echo "Error: beta releases must be tagged from a feature branch, not master" >&2
+    exit 1
+  fi
+else
+  # Stable releases must originate from master
+  if [ "$BRANCH" != "master" ]; then
+    echo "Error: stable releases must be tagged from master (currently on $BRANCH)" >&2
+    exit 1
+  fi
 fi
 
 # Ensure clean working tree
@@ -28,12 +40,12 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
-# Ensure local master is up to date with origin
-git fetch origin master --quiet
+# Ensure local branch is up to date with origin
+git fetch origin "$BRANCH" --quiet
 LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/master)
+REMOTE=$(git rev-parse "origin/${BRANCH}")
 if [ "$LOCAL" != "$REMOTE" ]; then
-  echo "Error: local master ($LOCAL) differs from origin/master ($REMOTE)" >&2
+  echo "Error: local $BRANCH ($LOCAL) differs from origin/$BRANCH ($REMOTE)" >&2
   echo "Pull or push first." >&2
   exit 1
 fi
@@ -71,9 +83,9 @@ git tag "v${VERSION}"
 echo "Ready to push v${VERSION}. Review:"
 git log --oneline -1
 echo ""
-read -rp "Push to origin/master with tag? [y/N] " confirm
+read -rp "Push to origin/${BRANCH} with tag? [y/N] " confirm
 if [[ "$confirm" =~ ^[Yy]$ ]]; then
-  git push origin master
+  git push origin "$BRANCH"
   git push origin "v${VERSION}"
   echo "Pushed v${VERSION}"
 else

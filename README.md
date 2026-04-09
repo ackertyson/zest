@@ -42,9 +42,9 @@ Our example shell configs include extra handling in case you uninstall zest whil
 
 ## Fish integration
 
-Wrap your prompt's output commands in a `begin ... end | zest` block.
+Short version: pipe your prompt output to zest.
 
-`$status` and `$pipestatus` are reset by every command — including `set_color` and `echo` — so capture them **before anything else runs** in `fish_prompt`, as shown below. `__fish_last_status` is exported (`-x`) so that `fish_right_prompt`, which runs in a separate scope, can read it. Other fish-managed variables like `$CMD_DURATION`, `$PWD`, and `$USER` reflect shell state rather than command results, so they're safe to read inside the block.
+`$status` and `$pipestatus` are reset by every command — including `set_color` and `echo` — so capture them **before anything else runs** in `fish_prompt`, as shown below. `__fish_last_status` is exported (`-x`) so that `fish_right_prompt`, which runs in a separate scope, can read it.
 
 IMPORTANT: the `command -q` check means your prompt still works if zest is ever uninstalled.
 
@@ -52,25 +52,19 @@ IMPORTANT: the `command -q` check means your prompt still works if zest is ever 
 function fish_prompt
     set -l last_pipestatus $pipestatus
     set -lx __fish_last_status $status
+    set -l status_str (__fish_print_pipestatus "[" "]" "|" \
+        (set_color red) (set_color red --bold) $last_pipestatus)
+    set -l normal (set_color normal)
 
     # ensures prompt still works if zest is uninstalled...
     set -l _zest cat
     command -q zest; and set _zest zest --duration 600 --flip-rate 5
 
-    begin
-        set_color cyan
-        echo -n (prompt_pwd)
-        set_color normal
-        printf '%s' (fish_vcs_prompt)
-        set -l pipestatus_string (__fish_print_pipestatus "[" "]" "|" \
-            (set_color red) (set_color red --bold) $last_pipestatus)
-        echo -n $pipestatus_string
-        set_color brcyan
-        echo -n " ❯ "
-        set_color normal
-    end | $_zest
+    string join '' -- (set_color cyan) (prompt_pwd) $normal (fish_git_prompt) $status_str (set_color brcyan) " ❯ " $normal | $_zest
 end
 ```
+
+If your prompt is too fancy to be a one-liner, wrap it in a `begin ... end | zest` block.
 
 ## Zsh integration
 
@@ -193,6 +187,39 @@ Run the `colors.sh` script to see the full 256-color palette.
 #### `--zsh`
 
 Wrap ANSI escape codes in `%{...%}` so zsh calculates prompt width correctly. This is normally auto-detected via `$ZSH_VERSION` — use this flag only if auto-detection fails.
+
+## Testing
+
+```bash
+cargo test                  # run all tests
+cargo test --test animation # just the render_frame() unit tests
+cargo test --test snapshots # just snapshot regression tests
+cargo test --test stability # PTY-level stability tests (signals, broken pipes, etc.)
+cargo test --test integration # basic integration tests
+cargo test --test fish_integration # fish + tmux end-to-end (requires fish and tmux)
+```
+
+### Test suites
+
+| Suite | What it tests | Speed |
+|---|---|---|
+| `animation` | Calls `render_frame()` directly as a pure function — progressive reveal, cooldown gradients, color snap, determinism, all animation+color combos | Fast (no I/O) |
+| `snapshots` | Compares every frame's rendered output against committed `.snap` files to catch visual regressions | Fast |
+| `stability` | Spawns zest with a real PTY and exercises failure modes: SIGWINCH during animation, broken stdout pipe, PTY disconnect, rapid signals | Medium |
+| `integration` | End-to-end: pipes ANSI input through the zest binary and verifies final stdout | Medium |
+| `fish_integration` | Fish+PTY pipe tests and a tmux smoke test — verifies zest doesn't hang or break in its most common deployment stack (fish inside tmux). Requires `fish` and `tmux`, skips gracefully if not installed | Slow |
+
+### Snapshots
+
+The `tests/snapshots/` directory contains `.snap` files — one per animation. Each file records the exact output of `render_frame()` for every frame of a standard ANSI prompt, with escape sequences shown as readable `\x1b[...]` text. These files are checked into source control so that any change to animation output shows up as a reviewable diff.
+
+If you intentionally change animation behavior, regenerate the snapshots and review the diff:
+
+```bash
+ZEST_UPDATE_SNAPSHOTS=1 cargo test --test snapshots
+git diff tests/snapshots/
+```
+
 
 ## Acknowledgements
 

@@ -1,16 +1,13 @@
-mod anim;
-mod shell;
-mod style;
-
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{self, IsTerminal, Read as IoRead, Write};
 use std::os::fd::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use style::parse_styled;
+use zest::anim;
+use zest::shell;
+use zest::style::parse_styled;
 
 type GradientPair = (Option<Vec<u8>>, Option<Vec<u8>>);
 
@@ -138,10 +135,7 @@ fn print_help() {
     const BW: &str = "\x1b[1m"; // bold (flags/names)
 
     let mut lines: Vec<String> = Vec::new();
-    lines.push(format!(
-        "zest v{}",
-        env!("CARGO_PKG_VERSION")
-    ));
+    lines.push(format!("zest v{}", env!("CARGO_PKG_VERSION")));
     lines.push(String::new());
     lines.push("Animate your shell prompt into view on each redraw.".into());
     lines.push(String::new());
@@ -198,7 +192,11 @@ fn print_help() {
     ));
     lines.push(format!("  {BW}-v{R}, {BW}--version{R}        Show version"));
 
-    let logo = if is_truecolor() { LOGO_TRUECOLOR } else { LOGO_256 };
+    let logo = if is_truecolor() {
+        LOGO_TRUECOLOR
+    } else {
+        LOGO_256
+    };
     let logo_lines: Vec<&str> = logo.lines().collect();
     let logo_width = logo_lines
         .iter()
@@ -322,11 +320,27 @@ fn read_input(is_piped: bool, rest: &[String]) -> String {
     }
 }
 
-/// Check if there are bytes waiting in the tty input buffer without consuming them.
-fn tty_has_input(tty: &std::fs::File) -> bool {
-    let mut count: libc::c_int = 0;
-    unsafe { libc::ioctl(tty.as_raw_fd(), libc::FIONREAD, &mut count) };
-    count > 0
+/// Block until input arrives on the tty or the timeout elapses.
+/// Returns true if input is available, false on timeout (or error).
+/// Uses select() so the wait is interrupted immediately when a key is pressed,
+/// rather than sleeping blindly and polling.
+fn wait_for_input(tty: &std::fs::File, timeout: Duration) -> bool {
+    let fd = tty.as_raw_fd();
+    unsafe {
+        let mut read_fds: libc::fd_set = std::mem::zeroed();
+        libc::FD_SET(fd, &mut read_fds);
+        let mut tv = libc::timeval {
+            tv_sec: timeout.as_secs() as libc::time_t,
+            tv_usec: timeout.subsec_micros() as libc::suseconds_t,
+        };
+        libc::select(
+            fd + 1,
+            &mut read_fds,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut tv,
+        ) > 0
+    }
 }
 
 fn main() {
@@ -341,24 +355,25 @@ fn main() {
         None => (None, None),
     };
     let flip_rate = cli.flip_rate.unwrap_or(4);
+    let seed = std::process::id();
     let (animation, text_args) = if let Some(first) = cli.positional.first() {
         let maybe_color = cli.positional.get(1).map(String::as_str);
-        if let Some(a) = anim::resolve(first, maybe_color, custom_fg, custom_bg, flip_rate) {
+        if let Some(a) = anim::resolve(first, maybe_color, custom_fg, custom_bg, flip_rate, seed) {
             let consumed = if maybe_color.is_some() { 2 } else { 1 };
             (a, &cli.positional[consumed..])
-        } else if let Some(a) = anim::resolve(first, None, custom_fg, custom_bg, flip_rate) {
+        } else if let Some(a) = anim::resolve(first, None, custom_fg, custom_bg, flip_rate, seed) {
             // Valid animation name but unrecognized color — use default color, don't consume second arg
             (a, &cli.positional[1..])
         } else {
             // Unknown animation name — treat all positionals as text
             (
-                anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate).unwrap(),
+                anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate, seed).unwrap(),
                 cli.positional.as_slice(),
             )
         }
     } else {
         (
-            anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate).unwrap(),
+            anim::resolve(anim::DEFAULT, None, custom_fg, custom_bg, flip_rate, seed).unwrap(),
             cli.positional.as_slice(),
         )
     };
@@ -395,22 +410,34 @@ fn main() {
             }
 
             let frame_delay = (target_duration / total_frames as u64).max(1);
-            write!(tty, "\x1b[?25l").unwrap(); // hide cursor
-            for frame in 1..=total_frames {
-                if INTERRUPTED.load(Ordering::Relaxed) || tty_has_input(&tty) {
+            // All tty writes treat errors as "stop animating" rather than panicking —
+            // the terminal may disappear mid-animation (disconnect, window close, etc.)
+            // and we must still write the prompt to stdout.
+            let _ = write!(tty, "\x1b[?25l"); // hide cursor
+            'anim: for frame in 1..=total_frames {
+                if INTERRUPTED.load(Ordering::Relaxed) {
                     break;
                 }
                 frame_buf.clear();
                 animation.render_frame(&styled, frame, &mut frame_buf);
-                write!(tty, "\r{}", frame_buf).unwrap();
-                tty.flush().unwrap();
-                thread::sleep(Duration::from_millis(frame_delay));
+                let t0 = Instant::now();
+                if write!(tty, "\r{}", frame_buf).is_err() || tty.flush().is_err() {
+                    break 'anim;
+                }
+                // Block until a key arrives or the frame delay expires.
+                // select() wakes immediately on input rather than sleeping blindly,
+                // so there is no overshoot between a keypress and the animation exiting.
+                let elapsed = t0.elapsed();
+                let remaining = Duration::from_millis(frame_delay).saturating_sub(elapsed);
+                if INTERRUPTED.load(Ordering::Relaxed) || wait_for_input(&tty, remaining) {
+                    break 'anim;
+                }
             }
             // Return cursor to col 0 without erasing, keeping it hidden. The cursor restore is
             // emitted via stdout so it becomes visible only after the shell renders the prompt,
             // eliminating the brief flash of a visible cursor at col 0.
-            write!(tty, "\r").unwrap();
-            tty.flush().unwrap();
+            let _ = write!(tty, "\r");
+            let _ = tty.flush();
         }
     }
 

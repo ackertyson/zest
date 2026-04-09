@@ -40,6 +40,8 @@ pub const COLORS: &[(&str, &[&str])] = &[
 
 pub trait Animation {
     fn cooldown_frames(&self) -> usize;
+    /// Total animation frames. Character i is revealed at frame i+1, so the last
+    /// character (index n−1) appears at frame n and needs cooldown_frames more.
     fn total_frames(&self, styled: &[StyledChar]) -> usize {
         styled.len() + self.cooldown_frames()
     }
@@ -81,17 +83,20 @@ pub fn cooldown_color(age: usize, cooldown_frames: usize, gradient: &[u8]) -> u8
     gradient[idx]
 }
 
-/// Splitmix64-style hash of position + frame — used by animations for deterministic
-/// per-cell randomness that avalanches all input bits.
-pub(super) fn hash(pos: usize, frame: usize) -> usize {
-    let mut h = pos.wrapping_add(frame.wrapping_mul(0x9e3779b97f4a7c15));
+/// Splitmix64-style hash of position, frame, and seed — used by animations for
+/// per-cell randomness that avalanches all input bits. The seed ensures each
+/// process invocation produces a unique glyph sequence.
+pub(super) fn hash(pos: usize, frame: usize, seed: u32) -> usize {
+    let mut h = pos
+        .wrapping_add(frame.wrapping_mul(0x9e3779b97f4a7c15))
+        .wrapping_add(seed as usize);
     h = (h ^ (h >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
     h = (h ^ (h >> 27)).wrapping_mul(0x94d049bb133111eb);
     h ^ (h >> 31)
 }
 
 pub(super) fn revealed(frame: usize, n: usize) -> usize {
-    if frame >= 2 { (frame - 2).min(n) } else { 0 }
+    frame.min(n)
 }
 
 pub(super) fn last_content(styled: &[StyledChar]) -> usize {
@@ -101,8 +106,8 @@ pub(super) fn last_content(styled: &[StyledChar]) -> usize {
         .unwrap_or(styled.len())
 }
 
-pub(super) fn has_leading(frame: usize, revealed: usize, n: usize, last_content: usize) -> bool {
-    frame >= 2 && revealed < n && revealed < last_content
+pub(super) fn has_leading(revealed: usize, n: usize, last_content: usize) -> bool {
+    revealed < n && revealed < last_content
 }
 
 /// Shared left-to-right sweep renderer used by sprout, flames, matrix, and scan.
@@ -134,10 +139,10 @@ pub(super) fn render_sweep<C, F, L>(
     let n = styled.len();
     let rev = revealed(frame, n);
     let lc = last_content(styled);
-    let has_lead = has_leading(frame, rev, n, lc);
+    let has_lead = has_leading(rev, n, lc);
 
     for (i, sc) in styled[..rev].iter().enumerate() {
-        let age = frame.saturating_sub(i + 3);
+        let age = frame.saturating_sub(i + 1);
         if age >= cooldown_frames || (snap_trailing && i >= lc) {
             buf.push_str("\x1b[0m");
             buf.push_str(&sc.color_prefix);
@@ -188,6 +193,7 @@ pub fn resolve(
     custom_fg: Option<&[u8]>,
     custom_bg: Option<&[u8]>,
     flip_rate: usize,
+    seed: u32,
 ) -> Option<Box<dyn Animation>> {
     match name {
         "sprout" => {
@@ -205,6 +211,7 @@ pub fn resolve(
                 gradient,
                 bg_gradient,
                 glyph_frames: flip_rate,
+                seed,
             }))
         }
         "matrix" => {
@@ -215,6 +222,7 @@ pub fn resolve(
                 bg_gradient,
                 glyph_frames: flip_rate,
                 trigger: std::cell::OnceCell::new(),
+                seed,
             }))
         }
         "scan" => {

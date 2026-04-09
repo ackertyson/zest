@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **Effortless fish/zsh integration** — Pipe to `zest` and go. Existing prompt configs need minimal adjustment.
 3. **Elegant, streamlined, idiomatic Rust** — Clean trait-based architecture, minimal deps, no unnecessary abstractions.
 4. **Flexible composability** — Animation patterns and color gradients mix freely.
+5. **`select()` over polling** — Never use sleep-loop polling to wait for I/O. Use `select()` (or equivalent) to block until data is ready, both in application code and in tests. Polling adds latency equal to half the sleep interval and wastes CPU.
 
 ## Commands
 
@@ -136,7 +137,7 @@ Available animations (`zest ANIMATION [COLOR]`):
 
 ### Sprout animation (`anim/sprout.rs`)
 
-Characters sweep in from the left, one per frame, starting at frame 2. A single **spinner character** (`-\|/` cycling) advances rightward one position per frame, acting as the leading edge.
+Characters sweep in from the left, one per frame, starting at frame 1. A single **spinner character** (`-\|/` cycling) advances rightward one position per frame, acting as the leading edge.
 
 Characters behind the spinner "cool down" over `COOLDOWN_FRAMES` frames:
 - **Cooling phase** (age < COOLDOWN_FRAMES): gradient from hot color to dark, using the selected color variant
@@ -153,7 +154,7 @@ Uses **ANSI 256-color mode** (`\x1b[38;5;Nm`) for the cooling gradient. The `gra
 
 ### Flames animation (`anim/flames.rs`)
 
-Characters sweep in from the left, one per frame, starting at frame 2. The leading edge and cooling characters are rendered as Braille/block dot-matrix chars (`FLAME_CHARS`) chosen deterministically by position and frame via a splitmix64-style hash, giving a flickering fire texture.
+Characters sweep in from the left, one per frame, starting at frame 1. The leading edge and cooling characters are rendered as Braille/block dot-matrix chars (`FLAME_CHARS`) chosen deterministically by position and frame via a splitmix64-style hash, giving a flickering fire texture.
 
 Characters cool down over `COOLDOWN_FRAMES` frames through the selected color gradient using ANSI 256-color mode. Once fully cooled, each character snaps to its actual prompt color.
 
@@ -168,7 +169,7 @@ The `gradient_for(color)` function maps an optional color name to the appropriat
 
 ### Matrix animation (`anim/matrix.rs`)
 
-All characters appear as scrambled ASCII glyphs at frame 2. Characters then resolve to their actual prompt in a **random order** (one per frame), each cooling through the color gradient over `COOLDOWN_FRAMES` before snapping to its real color. The resolve order is a deterministic Fisher-Yates permutation seeded via `hash()`, stored lazily in a `OnceCell<Vec<usize>>` mapping position → trigger step.
+All characters appear as scrambled ASCII glyphs at frame 1. Characters then resolve to their actual prompt in a **random order** (one per frame), each cooling through the color gradient over `COOLDOWN_FRAMES` before snapping to its real color. The resolve order is a deterministic Fisher-Yates permutation seeded via `hash()`, stored lazily in a `OnceCell<Vec<usize>>` mapping position → trigger step.
 
 `Matrix` holds a gradient field and an optional `bg_gradient` field (same pattern as `Flames`). The `gradient_for(color)` function maps an optional color name to the appropriate shared `GRADIENT_*` constant from `anim/mod.rs`.
 

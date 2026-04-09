@@ -24,6 +24,7 @@ pub struct Matrix {
     pub(super) bg_gradient: Option<&'static [u8]>,
     pub(super) glyph_frames: usize,
     pub(super) trigger: OnceCell<Vec<usize>>,
+    pub(super) seed: u32,
 }
 
 pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
@@ -38,15 +39,15 @@ pub fn gradient_for(color: Option<&str>) -> Option<&'static [u8]> {
     }
 }
 
-fn matrix_char(pos: usize, frame: usize) -> char {
-    MATRIX_CHARS[super::hash(pos, frame) % MATRIX_CHARS.len()] as char
+fn matrix_char(pos: usize, frame: usize, seed: u32) -> char {
+    MATRIX_CHARS[super::hash(pos, frame, seed) % MATRIX_CHARS.len()] as char
 }
 
 /// Fisher-Yates shuffle → inverted to get trigger\[pos\] = step at which that position starts cooling.
-fn build_trigger(n: usize) -> Vec<usize> {
+fn build_trigger(n: usize, seed: u32) -> Vec<usize> {
     let mut order: Vec<usize> = (0..n).collect();
     for i in (1..n).rev() {
-        let j = super::hash(i, 0x4d41_5458) % (i + 1);
+        let j = super::hash(i, 0x4d41_5458, seed) % (i + 1);
         order.swap(i, j);
     }
     let mut trigger = vec![0usize; n];
@@ -62,15 +63,11 @@ impl Animation for Matrix {
     }
 
     fn render_frame(&self, styled: &[StyledChar], frame: usize, buf: &mut String) {
-        if frame < 2 {
-            buf.push_str("\x1b[0m");
-            return;
-        }
-
         let n = styled.len();
         let gradient = self.gradient;
         let glyph_frames = self.glyph_frames;
-        let trigger = self.trigger.get_or_init(|| build_trigger(n));
+        let seed = self.seed;
+        let trigger = self.trigger.get_or_init(|| build_trigger(n, seed));
         let revealed = super::revealed(frame, n);
         let lc = super::last_content(styled);
 
@@ -85,7 +82,7 @@ impl Animation for Matrix {
 
             if trigger[i] < revealed {
                 // Triggered — cooling or fully cooled
-                let age = frame.saturating_sub(trigger[i] + 3);
+                let age = frame.saturating_sub(trigger[i] + 1);
                 if age >= COOLDOWN_FRAMES {
                     buf.push_str("\x1b[0m");
                     buf.push_str(&sc.color_prefix);
@@ -100,13 +97,13 @@ impl Animation for Matrix {
                             buf.push_str("\x1b[49m");
                         }
                     }
-                    buf.push(matrix_char(i, frame / glyph_frames));
+                    buf.push(matrix_char(i, frame / glyph_frames, seed));
                 }
             } else {
                 // Not yet triggered — scrambled glyph in hottest color
                 buf.push_str("\x1b[1m");
                 color256(buf, gradient[0]);
-                buf.push(matrix_char(i, frame / glyph_frames));
+                buf.push(matrix_char(i, frame / glyph_frames, seed));
             }
         }
 
@@ -126,22 +123,25 @@ mod tests {
             bg_gradient: None,
             glyph_frames: 6,
             trigger: OnceCell::new(),
+            seed: 42,
         }
     }
 
     #[test]
-    fn no_output_before_animation_starts() {
+    fn all_chars_scrambled_at_frame_1() {
         let styled = parse_styled("abc");
+        let m = test_matrix();
         let mut buf = String::new();
-        test_matrix().render_frame(&styled, 1, &mut buf);
-        assert!(!buf.contains('a'));
+        m.render_frame(&styled, 1, &mut buf);
+        // Frame 1: all chars visible as scrambled glyphs (matrix shows everything immediately)
+        assert!(buf.len() > "\x1b[0m".len());
     }
 
     #[test]
     fn chars_snap_after_cooldown() {
         let styled = parse_styled("a");
         let mut buf = String::new();
-        let snap_frame = 3 + COOLDOWN_FRAMES;
+        let snap_frame = 1 + COOLDOWN_FRAMES;
         test_matrix().render_frame(&styled, snap_frame, &mut buf);
         assert!(buf.contains('a'));
     }

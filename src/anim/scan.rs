@@ -60,7 +60,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn no_output_before_animation_starts() {
+    fn first_char_revealed_at_frame_1() {
         let styled = parse_styled("abc");
         let mut buf = String::new();
         Scan {
@@ -68,14 +68,15 @@ mod tests {
             bg_gradient: None,
         }
         .render_frame(&styled, 1, &mut buf);
-        assert!(!buf.contains('a'));
+        // Frame 1: first char revealed with leading edge
+        assert!(buf.len() > "\x1b[0m".len());
     }
 
     #[test]
     fn chars_snap_after_cooldown() {
         let styled = parse_styled("a");
         let mut buf = String::new();
-        let snap_frame = 3 + COOLDOWN_FRAMES;
+        let snap_frame = 1 + COOLDOWN_FRAMES;
         Scan {
             gradient: GRADIENT,
             bg_gradient: None,
