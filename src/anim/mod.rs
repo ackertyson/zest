@@ -11,31 +11,31 @@ use crate::style::{StyledChar, color256};
 pub const DEFAULT: &str = "flames";
 
 pub const LIST: &[(&str, &str)] = &[
-    ("sprout", "Green cooling gradient sweep"),
     ("flames", "Fire sweep with flickering dot-matrix characters"),
     ("matrix", "Scrambled ASCII resolves in random order"),
-    ("scan", "CRT phosphor sweep, brief white afterglow"),
     (
         "shine",
         "Instant reveal with bright yellow flash band sweep",
     ),
+    ("scan", "CRT phosphor sweep, brief white afterglow"),
+    ("sprout", "Green cooling gradient sweep"),
 ];
 
 pub const COLORS: &[(&str, &[&str])] = &[
-    ("sprout", &["green", "orange", "blue", "purple", "pink"]),
     ("flames", &["orange", "blue", "green", "purple", "pink"]),
     (
         "matrix",
         &["green", "blue", "red", "orange", "purple", "pink"],
     ),
     (
-        "scan",
-        &["white", "blue", "green", "orange", "purple", "pink", "red"],
-    ),
-    (
         "shine",
         &["yellow", "blue", "green", "orange", "purple", "pink", "red"],
     ),
+    (
+        "scan",
+        &["white", "blue", "green", "orange", "purple", "pink", "red"],
+    ),
+    ("sprout", &["green", "orange", "blue", "purple", "pink"]),
 ];
 
 pub trait Animation {
