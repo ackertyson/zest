@@ -131,4 +131,28 @@ mod tests {
         assert!(Rc::ptr_eq(&styled[0].color_prefix, &styled[1].color_prefix));
         assert!(Rc::ptr_eq(&styled[0].color_prefix, &styled[4].color_prefix));
     }
+
+    // ── Property tests ───────────────────────────────────────────────────────
+
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Arbitrary input — including malformed ANSI, bare ESC bytes, and high
+        /// Unicode — must never panic.
+        #[test]
+        fn parse_styled_no_panic(s in any::<String>()) {
+            let _ = parse_styled(&s);
+        }
+
+        /// For plain text (no escape sequences), every character in the input
+        /// must appear in the output in order. Verified without re-implementing
+        /// the parser — just compare the input chars directly.
+        #[test]
+        fn parse_styled_plain_text_completeness(s in "[^\x00-\x1f\u{7f}-\u{9f}]*") {
+            let styled = parse_styled(&s);
+            let expected: Vec<char> = s.chars().collect();
+            let actual: Vec<char> = styled.iter().map(|sc| sc.ch).collect();
+            prop_assert_eq!(actual, expected);
+        }
+    }
 }

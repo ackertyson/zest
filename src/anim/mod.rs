@@ -170,6 +170,32 @@ pub(super) fn render_sweep<C, F, L>(
     buf.push_str("\x1b[0m");
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// The indexing arithmetic in cooldown_color must never produce an
+        /// out-of-bounds index for any age and cooldown_frames combination that
+        /// could arise in practice (and well beyond).
+        #[test]
+        fn cooldown_color_in_bounds(
+            age in 0usize..=200,
+            cooldown_frames in 1usize..=50,
+            gradient_idx in 0usize..6,
+        ) {
+            let gradients: [&[u8]; 6] = [
+                GRADIENT_ORANGE, GRADIENT_BLUE, GRADIENT_GREEN,
+                GRADIENT_PURPLE, GRADIENT_PINK, GRADIENT_RED,
+            ];
+            let gradient = gradients[gradient_idx];
+            let result = cooldown_color(age, cooldown_frames, gradient);
+            prop_assert!(gradient.contains(&result));
+        }
+    }
+}
+
 fn leak(g: &[u8]) -> &'static [u8] {
     Box::leak(g.to_vec().into_boxed_slice())
 }

@@ -117,6 +117,22 @@ mod tests {
 
     use super::*;
 
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Fisher-Yates must produce a permutation: output contains every value
+        /// in 0..n exactly once, for any n and any seed.
+        #[test]
+        fn build_trigger_is_permutation(n in 0usize..=100, seed: u32) {
+            let trigger = build_trigger(n, seed);
+            prop_assert_eq!(trigger.len(), n);
+            let mut sorted = trigger.clone();
+            sorted.sort_unstable();
+            let expected: Vec<usize> = (0..n).collect();
+            prop_assert_eq!(sorted, expected);
+        }
+    }
+
     fn test_matrix() -> Matrix {
         Matrix {
             gradient: MATRIX_GREEN,
